@@ -6,6 +6,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.AuthorStats;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Events;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download;
@@ -18,6 +19,7 @@ using NzbDrone.Core.Validation.Paths;
 using NzbDrone.Http.REST.Attributes;
 using NzbDrone.SignalR;
 using Readarr.Http;
+using Readarr.Http.Extensions;
 
 namespace Readarr.Api.V1.Books
 {
@@ -63,37 +65,28 @@ namespace Readarr.Api.V1.Books
         }
 
         [HttpGet]
-        public List<BookResource> GetBooks([FromQuery]int? authorId,
-            [FromQuery]List<int> bookIds,
-            [FromQuery]string titleSlug,
-            [FromQuery]bool includeAllAuthorBooks = false)
+        public object GetBooks([FromQuery] int? authorId,
+            [FromQuery] List<int> bookIds,
+            [FromQuery] string titleSlug,
+            [FromQuery] bool includeAllAuthorBooks = false,
+            [FromQuery] PagingRequestResource paging = null)
         {
-            if (!authorId.HasValue && !bookIds.Any() && titleSlug.IsNullOrWhiteSpace())
+            if (authorId.HasValue || bookIds.Any() || titleSlug.IsNotNullOrWhiteSpace())
             {
-                var editionTask = Task.Run(() => _editionService.GetAllMonitoredEditions());
-                var metadataTask = Task.Run(() => _authorService.GetAllAuthors());
-                var books = _bookService.GetAllBooks();
-
-                var editions = editionTask.GetAwaiter().GetResult().GroupBy(x => x.BookId).ToDictionary(x => x.Key, y => y.ToList());
-
-                var authors = metadataTask.GetAwaiter().GetResult().ToDictionary(x => x.AuthorMetadataId);
-
-                foreach (var book in books)
-                {
-                    book.Author = authors[book.AuthorMetadataId];
-                    if (editions.TryGetValue(book.Id, out var bookEditions))
-                    {
-                        book.Editions = bookEditions;
-                    }
-                    else
-                    {
-                        book.Editions = new List<Edition>();
-                    }
-                }
-
-                return MapToResource(books, false);
+                return GetBooksWithSpecificParameters(authorId, bookIds, titleSlug, includeAllAuthorBooks);
             }
 
+            if (paging != null)
+            {
+                return GetBooksWithPagination(paging);
+            }
+
+            // Fallback to original behavior for backward compatibility
+            return GetBooksFallback();
+        }
+
+        private List<BookResource> GetBooksWithSpecificParameters(int? authorId, List<int> bookIds, string titleSlug, bool includeAllAuthorBooks)
+        {
             if (authorId.HasValue)
             {
                 var books = _bookService.GetBooksByAuthor(authorId.Value);
@@ -241,7 +234,7 @@ namespace Readarr.Api.V1.Books
         }
 
         [HttpPut("monitor")]
-        public IActionResult SetBooksMonitored([FromBody]BooksMonitoredResource resource)
+        public IActionResult SetBooksMonitored([FromBody] BooksMonitoredResource resource)
         {
             _bookService.SetMonitored(resource.BookIds, resource.Monitored);
 
