@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import { fetchBooksByAuthor } from 'Store/Actions/bookActions';
+import { fetchBooks, fetchBooksNextPage } from 'Store/Actions/bookActions';
 import { saveBookshelf, setBookshelfFilter, setBookshelfSort } from 'Store/Actions/bookshelfActions';
 import createAuthorClientSideCollectionItemsSelector from 'Store/Selectors/createAuthorClientSideCollectionItemsSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
@@ -54,7 +54,8 @@ const mapDispatchToProps = {
   setBookshelfSort,
   setBookshelfFilter,
   saveBookshelf,
-  fetchBooksByAuthor
+  fetchBooks,
+  fetchBooksNextPage
 };
 
 class BookshelfConnector extends Component {
