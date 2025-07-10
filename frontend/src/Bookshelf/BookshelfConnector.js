@@ -41,7 +41,10 @@ function createMapStateToProps() {
         isFetching,
         bookCount: books.bookCount,
         isBooksPopulated: books.isPopulated,
-        isSmallScreen: dimensionsState.isSmallScreen
+        isSmallScreen: dimensionsState.isSmallScreen,
+        currentPage: books.page,
+        totalPages: books.totalPages,
+        totalRecords: books.totalRecords
       };
     }
   );
@@ -65,18 +68,15 @@ class BookshelfConnector extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const prevAuthorIds = prevProps.items ? prevProps.items.map((a) => a.id).sort().join(',') : '';
-    const currentAuthorIds = this.props.items ? this.props.items.map((a) => a.id).sort().join(',') : '';
-
-    if (prevAuthorIds !== currentAuthorIds && this.props.items) {
-      this.props.items.forEach((author) => {
-        const statistics = author.statistics;
-        const hasCompleteBookList = statistics && statistics.totalBookCount !== 0 && author.books.length >= statistics.totalBookCount;
-
-        if (!hasCompleteBookList) {
-          this.props.fetchBooksByAuthor({ authorId: author.id });
-        }
-      });
+    const { bookCount, currentPage, totalPages, totalRecords, isFetching } = this.props;
+    if (
+      bookCount < totalRecords &&
+      currentPage &&
+      totalPages &&
+      currentPage < totalPages &&
+      !isFetching
+    ) {
+      this.props.fetchBooksNextPage();
     }
   }
 
@@ -88,17 +88,11 @@ class BookshelfConnector extends Component {
   // Control
 
   populate = () => {
-    const { items } = this.props;
-
-    if (items && items.length > 0) {
-      items.forEach((author) => {
-        const statistics = author.statistics;
-        const hasCompleteBookList = statistics && statistics.totalBookCount !== 0 && author.books.length >= statistics.totalBookCount;
-
-        if (!hasCompleteBookList) {
-          this.props.fetchBooksByAuthor({ authorId: author.id });
-        }
-      });
+    const { bookCount, totalRecords } = this.props;
+    if (bookCount === 0) {
+      this.props.fetchBooks();
+    } else if (totalRecords > 0 && bookCount < totalRecords) {
+      this.props.fetchBooksNextPage();
     }
   };
 
@@ -137,8 +131,17 @@ BookshelfConnector.propTypes = {
   setBookshelfSort: PropTypes.func.isRequired,
   setBookshelfFilter: PropTypes.func.isRequired,
   saveBookshelf: PropTypes.func.isRequired,
-  fetchBooksByAuthor: PropTypes.func.isRequired,
-  items: PropTypes.arrayOf(PropTypes.object).isRequired
+  fetchBooks: PropTypes.func.isRequired,
+  fetchBooksNextPage: PropTypes.func.isRequired,
+  items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentPage: PropTypes.number,
+  totalPages: PropTypes.number,
+  pageSize: PropTypes.number,
+  totalRecords: PropTypes.number,
+  isPopulated: PropTypes.bool.isRequired,
+  isFetching: PropTypes.bool.isRequired,
+  bookCount: PropTypes.number,
+  isBooksPopulated: PropTypes.bool
 };
 
 export default connect(createMapStateToProps, mapDispatchToProps)(BookshelfConnector);
