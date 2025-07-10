@@ -88,11 +88,9 @@ class BookshelfConnector extends Component {
   // Control
 
   populate = () => {
-    const { bookCount, totalRecords } = this.props;
-    if (bookCount === 0) {
+    const { items, currentPage } = this.props;
+    if (!items || items.length === 0 || (!currentPage || currentPage === 1)) {
       this.props.fetchBooks();
-    } else if (totalRecords > 0 && bookCount < totalRecords) {
-      this.props.fetchBooksNextPage();
     }
   };
 
