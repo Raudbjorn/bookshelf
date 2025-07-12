@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Dapper;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
@@ -27,6 +28,7 @@ namespace NzbDrone.Core.Books
         void SetMonitoredFlat(Book book, bool monitored);
         void SetMonitored(IEnumerable<int> ids, bool monitored);
         List<Book> GetAuthorBooksWithFiles(Author author);
+        List<BookWithRelatedData> GetAllBooksWithRelatedData();
     }
 
     public class BookRepository : BasicRepository<Book>, IBookRepository
@@ -224,6 +226,102 @@ namespace NzbDrone.Core.Books
                          .Join<Edition, BookFile>((t, f) => t.Id == f.EditionId)
                          .Where<Book>(x => x.AuthorMetadataId == author.AuthorMetadataId)
                          .Where<Edition>(e => e.Monitored == true));
+        }
+
+        public List<BookWithRelatedData> GetAllBooksWithRelatedData()
+        {
+            var sql = @"
+                SELECT
+                    b.""Id"",
+                    b.""AuthorMetadataId"",
+                    b.""ForeignBookId"",
+                    b.""TitleSlug"",
+                    b.""Title"",
+                    b.""ReleaseDate"",
+                    b.""Links"",
+                    b.""Genres"",
+                    b.""RelatedBooks"",
+                    b.""Ratings"",
+                    b.""LastSearchTime"",
+                    b.""CleanTitle"",
+                    b.""Monitored"",
+                    b.""AnyEditionOk"",
+                    b.""LastInfoSync"",
+                    b.""Added"",
+                    b.""AddOptions"",
+                    a.""Id"" as AuthorId,
+                    am.""Name"" as AuthorName,
+                    am.""SortName"" as AuthorSortName,
+                    am.""SortNameLastFirst"" as AuthorSortNameLastFirst,
+                    am.""NameLastFirst"" as AuthorNameLastFirst,
+                    e.""Title"" as SelectedEditionTitle,
+                    e.""ForeignEditionId"" as SelectedEditionForeignEditionId,
+                    e.""Disambiguation"" as SelectedEditionDisambiguation,
+                    e.""PageCount"" as SelectedEditionPageCount,
+                    e.""Images"" as SelectedEditionImages,
+                    e.""Links"" as SelectedEditionLinks,
+                    e.""Ratings"" as SelectedEditionRatings,
+                    COALESCE(s.""Title"", '') as SeriesTitle,
+                    0 as BookFileCount,
+                    1 as BookCount,
+                    1 as TotalBookCount,
+                    0 as SizeOnDisk
+                FROM ""Books"" b
+                INNER JOIN ""AuthorMetadata"" am ON b.""AuthorMetadataId"" = am.""Id""
+                INNER JOIN ""Authors"" a ON am.""Id"" = a.""AuthorMetadataId""
+                LEFT JOIN (
+                    SELECT
+                        e1.""BookId"",
+                        e1.""Title"",
+                        e1.""ForeignEditionId"",
+                        e1.""Disambiguation"",
+                        e1.""PageCount"",
+                        e1.""Images"",
+                        e1.""Links"",
+                        e1.""Ratings""
+                    FROM ""Editions"" e1
+                    WHERE e1.""Monitored"" = 1
+                    AND e1.""Id"" = (
+                        SELECT MIN(e2.""Id"")
+                        FROM ""Editions"" e2
+                        WHERE e2.""BookId"" = e1.""BookId""
+                        AND e2.""Monitored"" = 1
+                    )
+                ) e ON b.""Id"" = e.""BookId""
+                LEFT JOIN ""SeriesBookLink"" sbl ON b.""Id"" = sbl.""BookId""
+                LEFT JOIN ""Series"" s ON sbl.""SeriesId"" = s.""Id""
+                ORDER BY b.""Id""";
+
+            using (var conn = _database.OpenConnection())
+            {
+                return conn.Query<BookWithRelatedData>(sql).ToList();
+            }
+        }
+
+        protected override SqlBuilder PagedBuilder() => new SqlBuilder(_database.DatabaseType)
+              .Join<Book, AuthorMetadata>((book, meta) => book.AuthorMetadataId == meta.Id)
+              .Join<AuthorMetadata, Author>((meta, author) => meta.Id == author.AuthorMetadataId)
+              .Join<Book, Edition>((book, edition) => book.Id == edition.BookId && edition.Monitored);
+
+        protected override IEnumerable<Book> PagedQuery(SqlBuilder sql) =>
+             _database.QueryJoined<Book, AuthorMetadata, Author, Edition>(sql, (book, metadata, author, monitoredEdition) =>
+             {
+                 book.AuthorMetadata = metadata;
+                 book.Author = author;
+                 book.Editions = new List<Edition>() { monitoredEdition };
+                 return book;
+             });
+
+        protected override string GetPagedOrderBy(PagingSpec<Book> pagingSpec)
+        {
+            var bookSortKey = TableMapping.Mapper.GetSortKey(nameof(Book.CleanTitle));
+
+            var sortKey = TableMapping.Mapper.GetSortKey(pagingSpec.SortKey);
+            var sortDirection = pagingSpec.SortDirection == SortDirection.Descending ? "DESC" : "ASC";
+            var pagingOffset = Math.Max(pagingSpec.Page - 1, 0) * pagingSpec.PageSize;
+            var sorting = $"\"{sortKey.Table ?? _table}\".\"{sortKey.Column}\" {sortDirection}, \"{_table}\".\"{bookSortKey.Column}\" {sortDirection} LIMIT {pagingSpec.PageSize} OFFSET {pagingOffset}";
+
+            return sorting;
         }
     }
 }

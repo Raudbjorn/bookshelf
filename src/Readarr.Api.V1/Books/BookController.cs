@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
@@ -35,6 +34,7 @@ namespace Readarr.Api.V1.Books
         protected readonly IAuthorService _authorService;
         protected readonly IEditionService _editionService;
         protected readonly IAddBookService _addBookService;
+        private readonly IBookRepository _bookRepository;
 
         public BookController(IAuthorService authorService,
                           IBookService bookService,
@@ -46,14 +46,15 @@ namespace Readarr.Api.V1.Books
                           IUpgradableSpecification upgradableSpecification,
                           IBroadcastSignalRMessage signalRBroadcaster,
                           QualityProfileExistsValidator qualityProfileExistsValidator,
-                          MetadataProfileExistsValidator metadataProfileExistsValidator)
+                          MetadataProfileExistsValidator metadataProfileExistsValidator,
+                          IBookRepository bookRepository)
 
         : base(bookService, seriesBookLinkService, authorStatisticsService, coverMapper, upgradableSpecification, signalRBroadcaster)
         {
             _authorService = authorService;
             _editionService = editionService;
             _addBookService = addBookService;
-
+            _bookRepository = bookRepository;
             PostValidator.RuleFor(s => s.ForeignBookId).NotEmpty();
             PostValidator.RuleFor(s => s.Author.QualityProfileId).SetValidator(qualityProfileExistsValidator);
             PostValidator.RuleFor(s => s.Author.MetadataProfileId).SetValidator(metadataProfileExistsValidator);
@@ -138,6 +139,65 @@ namespace Readarr.Api.V1.Books
             }
 
             return MapToResource(_bookService.GetBooks(bookIds), false);
+        }
+
+        // Fallback path for legacy clients and full library fetch
+        private List<BookResource> GetBooksFallback()
+        {
+            var booksWithData = _bookRepository.GetAllBooksWithRelatedData();
+            var resources = new List<BookResource>(booksWithData.Count);
+            foreach (var b in booksWithData)
+            {
+                var resource = new BookResource
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    AuthorId = b.AuthorId,
+                    AuthorTitle = $"{b.AuthorNameLastFirst} {b.Title}",
+                    ForeignBookId = b.ForeignBookId,
+                    ForeignEditionId = b.SelectedEditionForeignEditionId,
+                    TitleSlug = b.TitleSlug,
+                    Monitored = b.Monitored,
+                    AnyEditionOk = b.AnyEditionOk,
+                    Ratings = b.SelectedEditionRatings,
+                    ReleaseDate = b.ReleaseDate,
+                    PageCount = b.SelectedEditionPageCount,
+                    Genres = b.Genres,
+                    Images = b.SelectedEditionImages?.ConvertAll(x => new MediaCover
+                    {
+                        Url = x.Url,
+                        CoverType = x.CoverType,
+                        RemoteUrl = x.RemoteUrl
+                    }) ?? new List<MediaCover>(),
+                    Links = b.SelectedEditionLinks,
+                    Added = b.Added,
+                    SeriesTitle = b.SeriesTitle,
+                    Disambiguation = b.SelectedEditionDisambiguation,
+                    Statistics = new BookStatisticsResource
+                    {
+                        BookFileCount = b.BookFileCount,
+                        BookCount = b.BookCount,
+                        TotalBookCount = b.TotalBookCount,
+                        SizeOnDisk = b.SizeOnDisk
+                    }
+                };
+                resources.Add(resource);
+            }
+
+            return resources;
+        }
+
+        private PagingResource<BookResource> GetBooksWithPagination(PagingRequestResource paging)
+        {
+            var pagingResource = new PagingResource<BookResource>(paging);
+            var pagingSpec = pagingResource.MapToPagingSpec<BookResource, Book>();
+
+            var result = pagingSpec.ApplyToPage(_bookService.GetPaged, book =>
+            {
+                return MapToResource(new List<Book> { book }, false).First();
+            });
+
+            return result;
         }
 
         [HttpGet("{id:int}/overview")]
