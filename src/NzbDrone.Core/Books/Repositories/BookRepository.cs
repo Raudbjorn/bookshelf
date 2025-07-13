@@ -261,11 +261,7 @@ namespace NzbDrone.Core.Books
                     e.""Images"" as SelectedEditionImages,
                     e.""Links"" as SelectedEditionLinks,
                     e.""Ratings"" as SelectedEditionRatings,
-                    COALESCE(s.""Title"", '') as SeriesTitle,
-                    0 as BookFileCount,
-                    1 as BookCount,
-                    1 as TotalBookCount,
-                    0 as SizeOnDisk
+                    COALESCE(sbl.""SeriesTitle"", '') as SeriesTitle
                 FROM ""Books"" b
                 INNER JOIN ""AuthorMetadata"" am ON b.""AuthorMetadataId"" = am.""Id""
                 INNER JOIN ""Authors"" a ON am.""Id"" = a.""AuthorMetadataId""
@@ -288,8 +284,16 @@ namespace NzbDrone.Core.Books
                         AND e2.""Monitored"" = 1
                     )
                 ) e ON b.""Id"" = e.""BookId""
-                LEFT JOIN ""SeriesBookLink"" sbl ON b.""Id"" = sbl.""BookId""
-                LEFT JOIN ""Series"" s ON sbl.""SeriesId"" = s.""Id""
+                LEFT JOIN (
+                    SELECT sbl.""BookId"", s.""Title"" as SeriesTitle
+                    FROM ""SeriesBookLink"" sbl
+                    LEFT JOIN ""Series"" s ON sbl.""SeriesId"" = s.""Id""
+                    INNER JOIN (
+                        SELECT ""BookId"", MIN(""Id"") as MinId
+                        FROM ""SeriesBookLink""
+                        GROUP BY ""BookId""
+                    ) first_series ON sbl.""BookId"" = first_series.""BookId"" AND sbl.""Id"" = first_series.""MinId""
+                ) sbl ON b.""Id"" = sbl.""BookId""
                 ORDER BY b.""Id""";
 
             using (var conn = _database.OpenConnection())
