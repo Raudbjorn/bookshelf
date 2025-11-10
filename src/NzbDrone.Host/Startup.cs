@@ -87,6 +87,11 @@ namespace NzbDrone.Host
             {
                 options.ReturnHttpNotAcceptable = true;
             })
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                // Disable automatic model validation to use custom validation in RestController
+                options.SuppressModelStateInvalidFilter = true;
+            })
             .AddApplicationPart(typeof(SystemController).Assembly)
             .AddApplicationPart(typeof(StaticResourceController).Assembly)
             .AddJsonOptions(options =>
