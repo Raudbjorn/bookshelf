@@ -542,12 +542,12 @@ sudo systemctl stop bookshelf rreading-glasses
 sudo systemctl disable bookshelf rreading-glasses
 
 # Remove service files
-sudo rm /etc/systemd/system/bookshelf.service
-sudo rm /etc/systemd/system/rreading-glasses.service
-sudo rm /usr/lib/sysusers.d/bookshelf.conf
-sudo rm /usr/lib/sysusers.d/rreading-glasses.conf
-sudo rm /usr/lib/tmpfiles.d/bookshelf.conf
-sudo rm /usr/lib/tmpfiles.d/rreading-glasses.conf
+sudo rm -f /etc/systemd/system/bookshelf.service
+sudo rm -f /etc/systemd/system/rreading-glasses.service
+sudo rm -f /usr/lib/sysusers.d/bookshelf.conf
+sudo rm -f /usr/lib/sysusers.d/rreading-glasses.conf
+sudo rm -f /usr/lib/tmpfiles.d/bookshelf.conf
+sudo rm -f /usr/lib/tmpfiles.d/rreading-glasses.conf
 
 # Reload systemd
 sudo systemctl daemon-reload

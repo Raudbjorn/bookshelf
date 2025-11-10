@@ -11,4 +11,4 @@ d /var/lib/rreading-glasses/logs   0755 rreading-glasses rreading-glasses
 Z /var/lib/rreading-glasses        - rreading-glasses rreading-glasses
 
 # Symlinks for convenience
-L /var/log/rreading-glasses        - - - - /var/lib/rreading-glasses/logs/
+L /var/log/rreading-glasses        - - - - /var/lib/rreading-glasses/logs

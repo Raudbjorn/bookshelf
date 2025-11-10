@@ -23,6 +23,7 @@
 Description=Bookshelf (Readarr Fork) - Book Manager
 Documentation=https://github.com/Raudbjorn/bookshelf
 Wants=network-online.target
+Requires=postgresql.service
 After=network-online.target postgresql.service
 
 [Service]
@@ -51,7 +52,6 @@ SyslogIdentifier=bookshelf
 ConfigurationDirectory=bookshelf
 RuntimeDirectory=bookshelf
 StateDirectory=bookshelf
-LogsDirectory=bookshelf
 
 # Security hardening
 CapabilityBoundingSet=CAP_CHOWN CAP_FSETID CAP_SETGID

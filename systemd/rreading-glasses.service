@@ -54,7 +54,6 @@ SyslogIdentifier=rreading-glasses
 ConfigurationDirectory=rreading-glasses
 RuntimeDirectory=rreading-glasses
 StateDirectory=rreading-glasses
-LogsDirectory=rreading-glasses
 
 # Security hardening
 CapabilityBoundingSet=

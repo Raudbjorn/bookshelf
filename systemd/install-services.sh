@@ -60,18 +60,7 @@ done
 if [[ $INSTALL_BOOKSHELF -eq 1 ]]; then
     echo -e "${GREEN}[1/3] Installing Bookshelf systemd service...${NC}"
 
-    # Create user and group
-    if ! getent group media > /dev/null 2>&1; then
-        echo "  Creating group: media"
-        groupadd -r media
-    fi
-
-    if ! id -u bookshelf > /dev/null 2>&1; then
-        echo "  Creating user: bookshelf"
-        useradd -r -g media -d /var/lib/bookshelf -s /usr/bin/nologin -c "Bookshelf (Readarr Fork) Daemon" bookshelf
-    fi
-
-    # Install sysusers config (alternative method)
+    # Install sysusers config
     install -Dm644 "${SCRIPT_DIR}/bookshelf.sysusers" /usr/lib/sysusers.d/bookshelf.conf
     echo "  ✓ Installed sysusers config"
 
@@ -82,26 +71,12 @@ if [[ $INSTALL_BOOKSHELF -eq 1 ]]; then
     # Install systemd service
     install -Dm644 "${SCRIPT_DIR}/bookshelf.service" /etc/systemd/system/bookshelf.service
     echo "  ✓ Installed systemd service"
-
-    # Create directories
-    systemd-tmpfiles --create bookshelf.conf
-    echo "  ✓ Created directories"
-
-    # Set ownership
-    chown -R bookshelf:media /var/lib/bookshelf 2>/dev/null || true
-
     echo ""
 fi
 
 # Install rreading-glasses
 if [[ $INSTALL_RREADING -eq 1 ]]; then
     echo -e "${GREEN}[2/3] Installing rreading-glasses systemd service...${NC}"
-
-    # Create user and group
-    if ! id -u rreading-glasses > /dev/null 2>&1; then
-        echo "  Creating user: rreading-glasses"
-        useradd -r -d /var/lib/rreading-glasses -s /usr/bin/nologin -c "rreading-glasses Book Metadata API" rreading-glasses
-    fi
 
     # Install sysusers config
     install -Dm644 "${SCRIPT_DIR}/rreading-glasses.sysusers" /usr/lib/sysusers.d/rreading-glasses.conf
@@ -123,18 +98,20 @@ if [[ $INSTALL_RREADING -eq 1 ]]; then
     else
         echo "  ⚠ Config exists: /etc/rreading-glasses/rreading-glasses.env"
     fi
-
-    # Create directories
-    systemd-tmpfiles --create rreading-glasses.conf
-    echo "  ✓ Created directories"
-
-    # Set ownership
-    chown -R rreading-glasses:rreading-glasses /var/lib/rreading-glasses 2>/dev/null || true
-
     echo ""
 fi
 
-echo -e "${GREEN}[3/3] Reloading systemd...${NC}"
+echo -e "${GREEN}[3/3] Creating users, directories, and reloading systemd...${NC}"
+
+# Create users and groups from sysusers configs
+systemd-sysusers
+echo "  ✓ Created users and groups"
+
+# Create directories and set ownership (using tmpfiles Z flag)
+systemd-tmpfiles --create
+echo "  ✓ Created directories with correct ownership"
+
+# Reload systemd
 systemctl daemon-reload
 echo "  ✓ Systemd reloaded"
 echo ""

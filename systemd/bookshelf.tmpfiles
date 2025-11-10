@@ -11,6 +11,6 @@ d /var/lib/bookshelf/logs   0755 bookshelf media
 Z /var/lib/bookshelf        - bookshelf media
 
 # Symlinks for convenience
-L /var/log/bookshelf        - - - - /var/lib/bookshelf/logs/
+L /var/log/bookshelf        - - - - /var/lib/bookshelf/logs
 L /run/bookshelf/bookshelf.pid - - - - /var/lib/bookshelf/bookshelf.pid
 L /etc/bookshelf/config.xml - - - - /var/lib/bookshelf/config.xml

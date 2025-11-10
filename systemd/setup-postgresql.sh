@@ -40,17 +40,24 @@ fi
 
 echo -e "${GREEN}[1/4] Setting up Bookshelf database...${NC}"
 
-# Generate random passwords
-BOOKSHELF_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
-RREADING_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
+# Generate random passwords with full entropy using hex encoding
+BOOKSHELF_PASSWORD=$(openssl rand -hex 32)
+RREADING_PASSWORD=$(openssl rand -hex 32)
 
-# Create bookshelf database and user
+# Create bookshelf database and user (idempotent)
 sudo -u postgres psql <<EOF
--- Create bookshelf database
-CREATE DATABASE bookshelf;
+-- Create bookshelf user if it doesn't exist
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'bookshelf') THEN
+    CREATE USER bookshelf WITH PASSWORD '$BOOKSHELF_PASSWORD';
+  END IF;
+END
+\$\$;
 
--- Create bookshelf user
-CREATE USER bookshelf WITH PASSWORD '$BOOKSHELF_PASSWORD';
+-- Create bookshelf database if it doesn't exist
+SELECT 'CREATE DATABASE bookshelf'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'bookshelf')\gexec
 
 -- Grant privileges
 GRANT ALL PRIVILEGES ON DATABASE bookshelf TO bookshelf;
@@ -62,19 +69,26 @@ GRANT ALL PRIVILEGES ON DATABASE bookshelf TO bookshelf;
 GRANT ALL ON SCHEMA public TO bookshelf;
 EOF
 
-echo -e "  ✓ Created database: bookshelf"
-echo -e "  ✓ Created user: bookshelf"
+echo -e "  ✓ Created/verified database: bookshelf"
+echo -e "  ✓ Created/verified user: bookshelf"
 echo ""
 
 echo -e "${GREEN}[2/4] Setting up rreading-glasses database...${NC}"
 
-# Create rreading-glasses database and user
+# Create rreading-glasses database and user (idempotent)
 sudo -u postgres psql <<EOF
--- Create rreading-glasses database
-CREATE DATABASE rreading_glasses;
+-- Create rreading-glasses user if it doesn't exist
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'rreading_glasses') THEN
+    CREATE USER rreading_glasses WITH PASSWORD '$RREADING_PASSWORD';
+  END IF;
+END
+\$\$;
 
--- Create rreading-glasses user
-CREATE USER rreading_glasses WITH PASSWORD '$RREADING_PASSWORD';
+-- Create rreading-glasses database if it doesn't exist
+SELECT 'CREATE DATABASE rreading_glasses'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'rreading_glasses')\gexec
 
 -- Grant privileges
 GRANT ALL PRIVILEGES ON DATABASE rreading_glasses TO rreading_glasses;
@@ -86,8 +100,8 @@ GRANT ALL PRIVILEGES ON DATABASE rreading_glasses TO rreading_glasses;
 GRANT ALL ON SCHEMA public TO rreading_glasses;
 EOF
 
-echo -e "  ✓ Created database: rreading_glasses"
-echo -e "  ✓ Created user: rreading_glasses"
+echo -e "  ✓ Created/verified database: rreading_glasses"
+echo -e "  ✓ Created/verified user: rreading_glasses"
 echo ""
 
 echo -e "${GREEN}[3/4] Saving configuration files...${NC}"
@@ -105,7 +119,15 @@ POSTGRES_USER=bookshelf
 POSTGRES_PASSWORD=$BOOKSHELF_PASSWORD
 EOF
 chmod 600 /etc/bookshelf/database.conf
-chown bookshelf:media /etc/bookshelf/database.conf 2>/dev/null || true
+
+# Set ownership only if user and group exist
+if id -u bookshelf >/dev/null 2>&1 && getent group media >/dev/null 2>&1; then
+    if ! chown bookshelf:media /etc/bookshelf/database.conf; then
+        echo -e "  ${YELLOW}Warning: Failed to set ownership for /etc/bookshelf/database.conf${NC}" >&2
+    fi
+else
+    echo -e "  ${YELLOW}Warning: User 'bookshelf' or group 'media' does not exist. Ownership not changed for /etc/bookshelf/database.conf${NC}" >&2
+fi
 
 echo -e "  ✓ Saved: /etc/bookshelf/database.conf"
 
@@ -124,7 +146,15 @@ POSTGRES_PASSWORD=$RREADING_PASSWORD
 PORT=8788
 EOF
 chmod 600 /etc/rreading-glasses/rreading-glasses.env
-chown rreading-glasses:rreading-glasses /etc/rreading-glasses/rreading-glasses.env 2>/dev/null || true
+
+# Set ownership only if user exists
+if id -u rreading-glasses >/dev/null 2>&1; then
+    if ! chown rreading-glasses:rreading-glasses /etc/rreading-glasses/rreading-glasses.env; then
+        echo -e "  ${YELLOW}Warning: Failed to set ownership for /etc/rreading-glasses/rreading-glasses.env${NC}" >&2
+    fi
+else
+    echo -e "  ${YELLOW}Warning: User 'rreading-glasses' does not exist. Ownership not set for /etc/rreading-glasses/rreading-glasses.env${NC}" >&2
+fi
 
 echo -e "  ✓ Saved: /etc/rreading-glasses/rreading-glasses.env"
 echo ""
