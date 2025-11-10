@@ -1,0 +1,15 @@
+# systemd-tmpfiles configuration for Bookshelf
+# Install to: /usr/lib/tmpfiles.d/bookshelf.conf
+#
+# Creates required directories and symlinks
+# Override with a modified version in /etc/tmpfiles.d/
+
+# Create logs directory
+d /var/lib/bookshelf/logs   0755 bookshelf media
+
+# Set ownership on state directory
+Z /var/lib/bookshelf        - bookshelf media
+
+# Symlinks for convenience
+L /var/log/bookshelf        - - - - /var/lib/bookshelf/logs
+L /etc/bookshelf/config.xml - - - - /var/lib/bookshelf/config.xml

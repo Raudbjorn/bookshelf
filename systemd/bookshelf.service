@@ -1,0 +1,84 @@
+# Bookshelf (Readarr fork) systemd service
+# Install to: /etc/systemd/system/bookshelf.service
+#
+# Use `systemctl edit bookshelf` to modify this service with an override.conf
+# Direct changes will be overwritten by package updates.
+#
+# Common overrides:
+# - Shared group setup:
+#   [Service]
+#   Group=media
+#   UMask=002
+#
+# - Media in /home (not recommended):
+#   [Service]
+#   PrivateUsers=false
+#   ProtectHome=false
+#
+# - Running in LXC container:
+#   [Service]
+#   PrivateUsers=false
+
+[Unit]
+Description=Bookshelf (Readarr Fork) - Book Manager
+Documentation=https://github.com/Raudbjorn/bookshelf
+Wants=network-online.target
+Requires=postgresql.service
+After=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=bookshelf
+Group=media
+UMask=002
+
+# Environment
+Environment=XDG_DATA_HOME=/var/lib/bookshelf
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+# Application
+ExecStart=/opt/bookshelf/Readarr -nobrowser -data=/var/lib/bookshelf
+WorkingDirectory=/var/lib/bookshelf
+
+# Process management
+KillMode=process
+PIDFile=/run/bookshelf/bookshelf.pid
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+SyslogIdentifier=bookshelf
+
+# Directories
+ConfigurationDirectory=bookshelf
+RuntimeDirectory=bookshelf
+StateDirectory=bookshelf
+
+# Security hardening
+CapabilityBoundingSet=CAP_CHOWN CAP_FSETID CAP_SETGID
+LockPersonality=true
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateUsers=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=full
+RemoveIPC=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+SocketBindAllow=ipv4:tcp:8787
+SocketBindAllow=ipv6:tcp:8787
+SocketBindDeny=any
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+
+[Install]
+WantedBy=multi-user.target

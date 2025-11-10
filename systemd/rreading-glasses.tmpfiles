@@ -1,0 +1,14 @@
+# systemd-tmpfiles configuration for rreading-glasses
+# Install to: /usr/lib/tmpfiles.d/rreading-glasses.conf
+#
+# Creates required directories
+# Override with a modified version in /etc/tmpfiles.d/
+
+# Create logs directory
+d /var/lib/rreading-glasses/logs   0755 rreading-glasses rreading-glasses
+
+# Set ownership on state directory
+Z /var/lib/rreading-glasses        - rreading-glasses rreading-glasses
+
+# Symlinks for convenience
+L /var/log/rreading-glasses        - - - - /var/lib/rreading-glasses/logs
