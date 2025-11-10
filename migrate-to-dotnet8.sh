@@ -53,7 +53,7 @@ if [ -f build.sh ]; then
 fi
 if [ -f build-optimized.sh ]; then
     sed -i 's/FRAMEWORK="net6\.0"/FRAMEWORK="net8.0"/g' build-optimized.sh
-    sed -i "s/_framework='net6\.0'/_framework='net8.0'/g' build-optimized.sh
+    sed -i "s/_framework='net6\.0'/_framework='net8.0'/g" build-optimized.sh
     sed -i 's/net6\.0/net8.0/g' build-optimized.sh
     echo -e "  ✓ Updated build-optimized.sh"
 fi
