@@ -40,9 +40,17 @@ fi
 
 echo -e "${GREEN}[1/4] Setting up Bookshelf database...${NC}"
 
-# Generate random passwords with full entropy using hex encoding
-BOOKSHELF_PASSWORD=$(openssl rand -hex 32)
-RREADING_PASSWORD=$(openssl rand -hex 32)
+# Check if bookshelf user exists and generate password only if needed
+BOOKSHELF_USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_catalog.pg_roles WHERE rolname='bookshelf'")
+if [[ -z "$BOOKSHELF_USER_EXISTS" ]]; then
+    BOOKSHELF_PASSWORD=$(openssl rand -hex 32)
+    BOOKSHELF_USER_NEW=true
+    echo "  Creating new bookshelf user..."
+else
+    BOOKSHELF_PASSWORD=""  # Will not be used
+    BOOKSHELF_USER_NEW=false
+    echo "  Bookshelf user already exists, skipping password generation"
+fi
 
 # Create bookshelf database and user (idempotent)
 sudo -u postgres psql <<EOF
@@ -74,6 +82,18 @@ echo -e "  ✓ Created/verified user: bookshelf"
 echo ""
 
 echo -e "${GREEN}[2/4] Setting up rreading-glasses database...${NC}"
+
+# Check if rreading-glasses user exists and generate password only if needed
+RREADING_USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_catalog.pg_roles WHERE rolname='rreading_glasses'")
+if [[ -z "$RREADING_USER_EXISTS" ]]; then
+    RREADING_PASSWORD=$(openssl rand -hex 32)
+    RREADING_USER_NEW=true
+    echo "  Creating new rreading-glasses user..."
+else
+    RREADING_PASSWORD=""  # Will not be used
+    RREADING_USER_NEW=false
+    echo "  rreading-glasses user already exists, skipping password generation"
+fi
 
 # Create rreading-glasses database and user (idempotent)
 sudo -u postgres psql <<EOF
@@ -108,7 +128,10 @@ echo -e "${GREEN}[3/4] Saving configuration files...${NC}"
 
 # Create config directory for bookshelf
 mkdir -p /etc/bookshelf
-cat > /etc/bookshelf/database.conf <<EOF
+
+# Only write config file if user was newly created (to avoid credential mismatch)
+if [[ "$BOOKSHELF_USER_NEW" == "true" ]] || [[ ! -f /etc/bookshelf/database.conf ]]; then
+    cat > /etc/bookshelf/database.conf <<EOF
 # Bookshelf PostgreSQL Configuration
 # This file is sourced by the systemd service
 
@@ -118,22 +141,28 @@ POSTGRES_DB=bookshelf
 POSTGRES_USER=bookshelf
 POSTGRES_PASSWORD=$BOOKSHELF_PASSWORD
 EOF
-chmod 600 /etc/bookshelf/database.conf
+    chmod 600 /etc/bookshelf/database.conf
 
-# Set ownership only if user and group exist
-if id -u bookshelf >/dev/null 2>&1 && getent group media >/dev/null 2>&1; then
-    if ! chown bookshelf:media /etc/bookshelf/database.conf; then
-        echo -e "  ${YELLOW}Warning: Failed to set ownership for /etc/bookshelf/database.conf${NC}" >&2
+    # Set ownership only if user and group exist
+    if id -u bookshelf >/dev/null 2>&1 && getent group media >/dev/null 2>&1; then
+        if ! chown bookshelf:media /etc/bookshelf/database.conf; then
+            echo -e "  ${YELLOW}Warning: Failed to set ownership for /etc/bookshelf/database.conf${NC}" >&2
+        fi
+    else
+        echo -e "  ${YELLOW}Warning: User 'bookshelf' or group 'media' does not exist. Ownership not changed for /etc/bookshelf/database.conf${NC}" >&2
     fi
-else
-    echo -e "  ${YELLOW}Warning: User 'bookshelf' or group 'media' does not exist. Ownership not changed for /etc/bookshelf/database.conf${NC}" >&2
-fi
 
-echo -e "  ✓ Saved: /etc/bookshelf/database.conf"
+    echo -e "  ✓ Saved: /etc/bookshelf/database.conf"
+else
+    echo -e "  ⚠ Config exists and user exists: /etc/bookshelf/database.conf (skipping to avoid credential mismatch)"
+fi
 
 # Create config for rreading-glasses
 mkdir -p /etc/rreading-glasses
-cat > /etc/rreading-glasses/rreading-glasses.env <<EOF
+
+# Only write config file if user was newly created (to avoid credential mismatch)
+if [[ "$RREADING_USER_NEW" == "true" ]] || [[ ! -f /etc/rreading-glasses/rreading-glasses.env ]]; then
+    cat > /etc/rreading-glasses/rreading-glasses.env <<EOF
 # rreading-glasses PostgreSQL Configuration
 
 POSTGRES_HOST=localhost
@@ -145,18 +174,21 @@ POSTGRES_PASSWORD=$RREADING_PASSWORD
 # API Configuration
 PORT=8788
 EOF
-chmod 600 /etc/rreading-glasses/rreading-glasses.env
+    chmod 600 /etc/rreading-glasses/rreading-glasses.env
 
-# Set ownership only if user exists
-if id -u rreading-glasses >/dev/null 2>&1; then
-    if ! chown rreading-glasses:rreading-glasses /etc/rreading-glasses/rreading-glasses.env; then
-        echo -e "  ${YELLOW}Warning: Failed to set ownership for /etc/rreading-glasses/rreading-glasses.env${NC}" >&2
+    # Set ownership only if user exists
+    if id -u rreading-glasses >/dev/null 2>&1; then
+        if ! chown rreading-glasses:rreading-glasses /etc/rreading-glasses/rreading-glasses.env; then
+            echo -e "  ${YELLOW}Warning: Failed to set ownership for /etc/rreading-glasses/rreading-glasses.env${NC}" >&2
+        fi
+    else
+        echo -e "  ${YELLOW}Warning: User 'rreading-glasses' does not exist. Ownership not set for /etc/rreading-glasses/rreading-glasses.env${NC}" >&2
     fi
-else
-    echo -e "  ${YELLOW}Warning: User 'rreading-glasses' does not exist. Ownership not set for /etc/rreading-glasses/rreading-glasses.env${NC}" >&2
-fi
 
-echo -e "  ✓ Saved: /etc/rreading-glasses/rreading-glasses.env"
+    echo -e "  ✓ Saved: /etc/rreading-glasses/rreading-glasses.env"
+else
+    echo -e "  ⚠ Config exists and user exists: /etc/rreading-glasses/rreading-glasses.env (skipping to avoid credential mismatch)"
+fi
 echo ""
 
 echo -e "${GREEN}[4/4] Testing connections...${NC}"
