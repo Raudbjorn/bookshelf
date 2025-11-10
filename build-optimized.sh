@@ -23,7 +23,7 @@ case $(uname -m) in
   *) echo -e "${RED}Unsupported architecture: $(uname -m)${NC}"; exit 1 ;;
 esac
 
-FRAMEWORK='net6.0'
+FRAMEWORK='net8.0'
 RUNTIME="linux-${CARCH}"
 OUTPUT="_output"
 ARTIFACTS="${OUTPUT}/${FRAMEWORK}/${RUNTIME}/publish"
