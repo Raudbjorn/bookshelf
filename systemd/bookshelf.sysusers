@@ -1,0 +1,8 @@
+# systemd-sysusers configuration for Bookshelf
+# Install to: /usr/lib/sysusers.d/bookshelf.conf
+#
+# Creates the bookshelf user and media group
+
+u bookshelf - "Bookshelf (Readarr Fork) Daemon" /var/lib/bookshelf /usr/bin/nologin
+g media     -
+m bookshelf media

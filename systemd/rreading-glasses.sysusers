@@ -1,0 +1,7 @@
+# systemd-sysusers configuration for rreading-glasses
+# Install to: /usr/lib/sysusers.d/rreading-glasses.conf
+#
+# Creates the rreading-glasses user and group
+
+u rreading-glasses - "rreading-glasses Book Metadata API" /var/lib/rreading-glasses /usr/bin/nologin
+g rreading-glasses -

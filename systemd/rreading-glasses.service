@@ -1,0 +1,89 @@
+# rreading-glasses systemd service
+# Install to: /etc/systemd/system/rreading-glasses.service
+#
+# Use `systemctl edit rreading-glasses` to modify this service with an override.conf
+# Direct changes will be overwritten by package updates.
+#
+# Common overrides:
+# - Custom port:
+#   [Service]
+#   Environment="PORT=8080"
+#
+# - Custom database:
+#   [Service]
+#   Environment="POSTGRES_HOST=db.example.com"
+#   Environment="POSTGRES_PORT=5432"
+
+[Unit]
+Description=rreading-glasses - Book Metadata API Service
+Documentation=https://github.com/mr55p-dev/rreading-glasses
+Wants=network-online.target
+After=network-online.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=rreading-glasses
+Group=rreading-glasses
+UMask=0022
+
+# Environment
+Environment="PORT=8788"
+Environment="POSTGRES_HOST=localhost"
+Environment="POSTGRES_PORT=5432"
+Environment="POSTGRES_DB=rreading_glasses"
+Environment="POSTGRES_USER=rreading_glasses"
+EnvironmentFile=-/etc/rreading-glasses/rreading-glasses.env
+
+# Application (choose GoodReads or Hardcover)
+# For GoodReads API:
+ExecStart=/opt/rreading-glasses/rggr
+# For Hardcover API (comment out GoodReads and uncomment this):
+#ExecStart=/opt/rreading-glasses/rghc
+
+WorkingDirectory=/var/lib/rreading-glasses
+
+# Process management
+KillMode=process
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+SyslogIdentifier=rreading-glasses
+
+# Directories
+ConfigurationDirectory=rreading-glasses
+RuntimeDirectory=rreading-glasses
+StateDirectory=rreading-glasses
+LogsDirectory=rreading-glasses
+
+# Security hardening
+CapabilityBoundingSet=
+LockPersonality=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+PrivateUsers=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
+ReadWritePaths=/var/lib/rreading-glasses
+RemoveIPC=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+SocketBindAllow=ipv4:tcp:8788
+SocketBindAllow=ipv6:tcp:8788
+SocketBindDeny=any
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+
+[Install]
+WantedBy=multi-user.target
