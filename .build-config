@@ -1,0 +1,11 @@
+#!/bin/bash
+# Shared build configuration for Bookshelf
+# Source this file in build scripts to avoid duplication
+
+# Target .NET framework version
+export DOTNET_FRAMEWORK='net8.0'
+
+# Build environment configuration
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
