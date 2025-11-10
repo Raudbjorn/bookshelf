@@ -336,31 +336,5 @@ namespace NzbDrone.Core.Books
                 return conn.Query<BookWithRelatedData>(sql).ToList();
             }
         }
-
-        protected override SqlBuilder PagedBuilder() => new SqlBuilder(_database.DatabaseType)
-              .Join<Book, AuthorMetadata>((book, meta) => book.AuthorMetadataId == meta.Id)
-              .Join<AuthorMetadata, Author>((meta, author) => meta.Id == author.AuthorMetadataId)
-              .Join<Book, Edition>((book, edition) => book.Id == edition.BookId && edition.Monitored);
-
-        protected override IEnumerable<Book> PagedQuery(SqlBuilder sql) =>
-             _database.QueryJoined<Book, AuthorMetadata, Author, Edition>(sql, (book, metadata, author, monitoredEdition) =>
-             {
-                 book.AuthorMetadata = metadata;
-                 book.Author = author;
-                 book.Editions = new List<Edition>() { monitoredEdition };
-                 return book;
-             });
-
-        protected override string GetPagedOrderBy(PagingSpec<Book> pagingSpec)
-        {
-            var bookSortKey = TableMapping.Mapper.GetSortKey(nameof(Book.CleanTitle));
-
-            var sortKey = TableMapping.Mapper.GetSortKey(pagingSpec.SortKey);
-            var sortDirection = pagingSpec.SortDirection == SortDirection.Descending ? "DESC" : "ASC";
-            var pagingOffset = Math.Max(pagingSpec.Page - 1, 0) * pagingSpec.PageSize;
-            var sorting = $"\"{sortKey.Table ?? _table}\".\"{sortKey.Column}\" {sortDirection}, \"{_table}\".\"{bookSortKey.Column}\" {sortDirection} LIMIT {pagingSpec.PageSize} OFFSET {pagingOffset}";
-
-            return sorting;
-        }
     }
 }
