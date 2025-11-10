@@ -25,7 +25,16 @@ Migrating from .NET 6.0 to .NET 8.0 is a **relatively straightforward upgrade** 
 - ✅ All 25 `.csproj` files: Change `<TargetFrameworks>net6.0</TargetFrameworks>` → `net8.0`
 - ✅ `src/Directory.Build.props`: Update RuntimeIdentifiers if needed
 - ✅ `build.sh` and `build-optimized.sh`: Change `_framework='net6.0'` → `net8.0`
-- ✅ All `packages.lock.json` files (regenerated automatically)
+- ✅ All `packages.lock.json` files (deleted and regenerated)
+
+**Important: packages.lock.json Deletion**
+All 24 `packages.lock.json` files were intentionally deleted during the migration because:
+1. **Framework Change**: Lock files are framework-specific; .NET 6 locks are incompatible with .NET 8
+2. **Package Version Updates**: Multiple packages updated from 6.x to 8.x, requiring new dependency resolution
+3. **Automatic Regeneration**: NuGet regenerates these automatically on first `dotnet restore` with new framework
+4. **CI/CD Compatibility**: Most CI systems regenerate lock files anyway; this ensures clean state
+
+The lock files will be regenerated with correct .NET 8 package versions on next build/restore.
 
 **Simple Find/Replace**:
 ```bash
@@ -80,6 +89,16 @@ sed -i 's/net6\.0/net8.0/g' build.sh build-optimized.sh
 - Minimal API changes (unlikely to affect Readarr)
 - Some middleware ordering changes
 - **Fix**: Review startup.cs if errors occur
+
+**Exception Serialization** (SYSLIB0051):
+- Binary serialization of exceptions is obsolete in .NET 8
+- Removed `[Serializable]` attributes and serialization constructors from:
+  - `DestinationAlreadyExistsException`
+  - `RecycleBinException`
+  - `RootFolderNotFoundException`
+  - `AzwTagException`
+- **Impact Analysis**: ✅ **SAFE** - These exceptions are only used for local error handling within the same process. No cross-process communication, remoting, or persistence uses these exceptions.
+- **Verified**: Grep analysis confirmed no BinaryFormatter, ISerializable, or remoting usage in codebase
 
 **Most Common Issue**: None expected - Readarr's codebase is fairly standard.
 

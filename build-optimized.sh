@@ -2,6 +2,10 @@
 # Optimized build script based on AUR PKGBUILD best practices
 set -e
 
+# Load shared build configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/.build-config"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -9,11 +13,6 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}Building Bookshelf (Readarr fork) with AUR optimizations${NC}"
-
-# Dotnet telemetry opt-out and optimization flags
-export DOTNET_CLI_TELEMETRY_OPTOUT=1
-export DOTNET_NOLOGO=1
-export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
 # Architecture detection
 case $(uname -m) in
@@ -23,7 +22,7 @@ case $(uname -m) in
   *) echo -e "${RED}Unsupported architecture: $(uname -m)${NC}"; exit 1 ;;
 esac
 
-FRAMEWORK='net8.0'
+FRAMEWORK="${DOTNET_FRAMEWORK}"
 RUNTIME="linux-${CARCH}"
 OUTPUT="_output"
 ARTIFACTS="${OUTPUT}/${FRAMEWORK}/${RUNTIME}/publish"
