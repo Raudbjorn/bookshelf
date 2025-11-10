@@ -1,0 +1,6 @@
+# This file disables the built-in updater
+# Used when Bookshelf is managed externally (package manager, docker, etc.)
+PackageAuthor=Raudbjorn/bookshelf
+UpdateMethod=External
+UpdateMethodMessage=This installation is managed externally. Use git pull or your package manager to update.
+Branch=develop
