@@ -204,13 +204,21 @@ namespace Readarr.Api.V1.Search
                 {
                     foreach (var result in results)
                     {
-                        if (result is NzbDrone.Core.Books.Author author)
+                        if (result is NzbDrone.Core.MetadataSource.Hardcover.HardcoverAuthorResult hardcoverAuthor)
                         {
-                            hardcoverAuthors.Add(author);
+                            var author = ConvertHardcoverAuthorToDomain(hardcoverAuthor);
+                            if (author != null)
+                            {
+                                hardcoverAuthors.Add(author);
+                            }
                         }
-                        else if (result is Book book)
+                        else if (result is NzbDrone.Core.MetadataSource.Hardcover.HardcoverBookResult hardcoverBook)
                         {
-                            hardcoverBooks.Add(book);
+                            var book = ConvertHardcoverBookToDomain(hardcoverBook);
+                            if (book != null)
+                            {
+                                hardcoverBooks.Add(book);
+                            }
                         }
                     }
 
@@ -225,13 +233,13 @@ namespace Readarr.Api.V1.Search
                 {
                     foreach (var result in results)
                     {
-                        if (result is NzbDrone.Core.Books.Author author)
+                        if (result is NzbDrone.Core.MetadataSource.OpenLibrary.OpenLibrarySearchDoc openLibraryDoc)
                         {
-                            openLibraryAuthors.Add(author);
-                        }
-                        else if (result is Book book)
-                        {
-                            openLibraryBooks.Add(book);
+                            var book = ConvertOpenLibraryDocToDomain(openLibraryDoc);
+                            if (book != null)
+                            {
+                                openLibraryBooks.Add(book);
+                            }
                         }
                     }
 
@@ -246,13 +254,13 @@ namespace Readarr.Api.V1.Search
                 {
                     foreach (var result in results)
                     {
-                        if (result is NzbDrone.Core.Books.Author author)
+                        if (result is NzbDrone.Core.MetadataSource.GoogleBooks.GoogleBookItem googleBookItem)
                         {
-                            googleBooksAuthors.Add(author);
-                        }
-                        else if (result is Book book)
-                        {
-                            googleBooksBooks.Add(book);
+                            var book = ConvertGoogleBookItemToDomain(googleBookItem);
+                            if (book != null)
+                            {
+                                googleBooksBooks.Add(book);
+                            }
                         }
                     }
 
@@ -441,6 +449,167 @@ namespace Readarr.Api.V1.Search
 
                 yield return resource;
             }
+        }
+
+        // Conversion methods to transform raw API objects into domain objects for reconciliation
+        private Book ConvertGoogleBookItemToDomain(NzbDrone.Core.MetadataSource.GoogleBooks.GoogleBookItem googleBookItem)
+        {
+            if (googleBookItem == null || string.IsNullOrWhiteSpace(googleBookItem.Id))
+            {
+                return null;
+            }
+
+            // Create edition with detailed metadata
+            var edition = new Edition
+            {
+                Title = googleBookItem.VolumeInfo?.Title ?? "Unknown",
+                Overview = googleBookItem.VolumeInfo?.Description,
+                PageCount = googleBookItem.VolumeInfo?.PageCount ?? 0,
+                GoogleBooksEditionId = googleBookItem.Id,
+                Ratings = new Ratings
+                {
+                    Value = (decimal)(googleBookItem.VolumeInfo?.AverageRating ?? 0),
+                    Votes = googleBookItem.VolumeInfo?.RatingsCount ?? 0
+                }
+            };
+
+            // Add cover image to edition
+            if (!string.IsNullOrWhiteSpace(googleBookItem.VolumeInfo?.ImageLinks?.Thumbnail))
+            {
+                edition.Images.Add(new MediaCover
+                {
+                    CoverType = MediaCoverTypes.Cover,
+                    Url = googleBookItem.VolumeInfo.ImageLinks.Thumbnail,
+                    RemoteUrl = googleBookItem.VolumeInfo.ImageLinks.Thumbnail
+                });
+            }
+
+            // Create book with edition
+            var book = new Book
+            {
+                Title = googleBookItem.VolumeInfo?.Title ?? "Unknown",
+                GoogleBooksId = googleBookItem.Id,
+                Editions = new List<Edition> { edition }
+            };
+
+            return book;
+        }
+
+        private Book ConvertOpenLibraryDocToDomain(NzbDrone.Core.MetadataSource.OpenLibrary.OpenLibrarySearchDoc openLibraryDoc)
+        {
+            if (openLibraryDoc == null || string.IsNullOrWhiteSpace(openLibraryDoc.Key))
+            {
+                return null;
+            }
+
+            // Create edition with detailed metadata
+            var edition = new Edition
+            {
+                Title = openLibraryDoc.Title ?? "Unknown",
+                Overview = openLibraryDoc.Subject != null && openLibraryDoc.Subject.Any()
+                    ? string.Join(", ", openLibraryDoc.Subject.Take(5))
+                    : null,
+                PageCount = openLibraryDoc.NumberOfPagesMedian ?? 0,
+                OpenLibraryEditionId = openLibraryDoc.Key,
+                Ratings = new Ratings
+                {
+                    Value = (decimal)(openLibraryDoc.RatingsAverage ?? 0),
+                    Votes = openLibraryDoc.RatingsCount ?? 0
+                }
+            };
+
+            // Add cover image to edition
+            if (openLibraryDoc.CoverId != null && openLibraryDoc.CoverId > 0)
+            {
+                var coverUrl = $"https://covers.openlibrary.org/b/id/{openLibraryDoc.CoverId}-L.jpg";
+                edition.Images.Add(new MediaCover
+                {
+                    CoverType = MediaCoverTypes.Cover,
+                    Url = coverUrl,
+                    RemoteUrl = coverUrl
+                });
+            }
+
+            // Create book with edition
+            var book = new Book
+            {
+                Title = openLibraryDoc.Title ?? "Unknown",
+                OpenLibraryWorkId = openLibraryDoc.Key,
+                Editions = new List<Edition> { edition }
+            };
+
+            return book;
+        }
+
+        private Book ConvertHardcoverBookToDomain(NzbDrone.Core.MetadataSource.Hardcover.HardcoverBookResult hardcoverBook)
+        {
+            if (hardcoverBook == null || string.IsNullOrWhiteSpace(hardcoverBook.Id))
+            {
+                return null;
+            }
+
+            // Create edition with detailed metadata
+            var edition = new Edition
+            {
+                Title = hardcoverBook.Title ?? "Unknown",
+                Overview = hardcoverBook.Description,
+                PageCount = hardcoverBook.Pages,
+                HardcoverEditionId = hardcoverBook.Id,
+                Ratings = new Ratings
+                {
+                    Value = (decimal)hardcoverBook.Rating,
+                    Votes = 0  // HardcoverBookResult doesn't have RatingsCount
+                }
+            };
+
+            // Add cover image to edition
+            if (!string.IsNullOrWhiteSpace(hardcoverBook.ImageUrl))
+            {
+                edition.Images.Add(new MediaCover
+                {
+                    CoverType = MediaCoverTypes.Cover,
+                    Url = hardcoverBook.ImageUrl,
+                    RemoteUrl = hardcoverBook.ImageUrl
+                });
+            }
+
+            // Create book with edition
+            var book = new Book
+            {
+                Title = hardcoverBook.Title ?? "Unknown",
+                HardcoverBookId = hardcoverBook.Id,
+                Editions = new List<Edition> { edition }
+            };
+
+            return book;
+        }
+
+        private NzbDrone.Core.Books.Author ConvertHardcoverAuthorToDomain(NzbDrone.Core.MetadataSource.Hardcover.HardcoverAuthorResult hardcoverAuthor)
+        {
+            if (hardcoverAuthor == null || string.IsNullOrWhiteSpace(hardcoverAuthor.Id))
+            {
+                return null;
+            }
+
+            var author = new NzbDrone.Core.Books.Author();
+
+            // Initialize metadata with author information
+            author.Metadata.Value.Name = hardcoverAuthor.Name ?? "Unknown";
+            author.Metadata.Value.HardcoverAuthorId = hardcoverAuthor.Id;
+            author.Metadata.Value.Overview = hardcoverAuthor.Bio;
+
+            // Add author image to metadata
+            if (!string.IsNullOrWhiteSpace(hardcoverAuthor.ImageUrl))
+            {
+                author.Metadata.Value.Images.Add(new MediaCover
+                {
+                    CoverType = MediaCoverTypes.Poster,
+                    Url = hardcoverAuthor.ImageUrl,
+                    RemoteUrl = hardcoverAuthor.ImageUrl
+                });
+            }
+
+            return author;
         }
     }
 }
