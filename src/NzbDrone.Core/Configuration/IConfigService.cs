@@ -81,6 +81,10 @@ namespace NzbDrone.Core.Configuration
         bool GoogleBooksEnabled { get; set; }
         string GoogleBooksApiKey { get; set; }
 
+        //Metadata Provider Caching
+        int GoogleBooksCacheTtlHours { get; set; }
+        int OpenLibraryCacheTtlHours { get; set; }
+
         //Forms Auth
         string RijndaelPassphrase { get; }
         string HmacPassphrase { get; }

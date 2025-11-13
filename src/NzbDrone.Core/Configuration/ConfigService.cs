@@ -364,6 +364,20 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("GoogleBooksApiKey", value); }
         }
 
+        public int GoogleBooksCacheTtlHours
+        {
+            get { return GetValueInt("GoogleBooksCacheTtlHours", 1); }
+
+            set { SetValue("GoogleBooksCacheTtlHours", value); }
+        }
+
+        public int OpenLibraryCacheTtlHours
+        {
+            get { return GetValueInt("OpenLibraryCacheTtlHours", 1); }
+
+            set { SetValue("OpenLibraryCacheTtlHours", value); }
+        }
+
         public int FirstDayOfWeek
         {
             get { return GetValueInt("FirstDayOfWeek", (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek); }

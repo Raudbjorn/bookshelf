@@ -9,6 +9,7 @@ using System.Threading;
 using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Http;
 
 namespace NzbDrone.Core.MetadataSource.OpenLibrary
 {
@@ -23,12 +24,14 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
         private static DateTime _lastRequestTime = DateTime.MinValue;
 
         private readonly IHttpClient _httpClient;
+        private readonly ICachedHttpResponseService _cachedHttpClient;
         private readonly IConfigService _configService;
         private readonly Logger _logger;
 
-        public OpenLibrarySearchClient(IHttpClient httpClient, IConfigService configService)
+        public OpenLibrarySearchClient(IHttpClient httpClient, ICachedHttpResponseService cachedHttpClient, IConfigService configService)
         {
             _httpClient = httpClient;
+            _cachedHttpClient = cachedHttpClient;
             _configService = configService;
             _logger = LogManager.GetCurrentClassLogger();
         }
@@ -110,11 +113,16 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
 
         private HttpResponse ExecuteWithRetry(HttpRequest request)
         {
+            // Use cached response if available (1 hour TTL by default)
+            var useCache = true;
+            var cacheTtl = TimeSpan.FromHours(_configService.OpenLibraryCacheTtlHours);
+
             for (var attempt = 1; attempt <= 2; attempt++)
             {
                 try
                 {
-                    var response = _httpClient.Execute(request);
+                    // Use cached HTTP client for GET requests
+                    var response = _cachedHttpClient.Get(request, useCache, cacheTtl);
 
                     if (!response.HasHttpError)
                     {
