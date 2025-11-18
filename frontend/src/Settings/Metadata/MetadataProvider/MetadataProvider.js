@@ -160,6 +160,92 @@ function MetadataProvider(props) {
               </FormGroup>
 
             </FieldSet>
+
+            <FieldSet legend={translate('MetadataSearchProviders')}>
+              <FormGroup>
+                <FormLabel>
+                  {translate('HardcoverEnabled')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.CHECK}
+                  name="hardcoverEnabled"
+                  helpText={translate('HardcoverEnabledHelpText')}
+                  onChange={onInputChange}
+                  {...settings.hardcoverEnabled}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('HardcoverApiToken')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.PASSWORD}
+                  name="hardcoverApiToken"
+                  helpText={translate('HardcoverApiTokenHelpText')}
+                  onChange={onInputChange}
+                  {...settings.hardcoverApiToken}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('HardcoverUsername')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.TEXT}
+                  name="hardcoverUsername"
+                  helpText={translate('HardcoverUsernameHelpText')}
+                  onChange={onInputChange}
+                  {...settings.hardcoverUsername}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('OpenLibraryEnabled')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.CHECK}
+                  name="openLibraryEnabled"
+                  helpText={translate('OpenLibraryEnabledHelpText')}
+                  onChange={onInputChange}
+                  {...settings.openLibraryEnabled}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('GoogleBooksEnabled')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.CHECK}
+                  name="googleBooksEnabled"
+                  helpText={translate('GoogleBooksEnabledHelpText')}
+                  onChange={onInputChange}
+                  {...settings.googleBooksEnabled}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>
+                  {translate('GoogleBooksApiKey')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.PASSWORD}
+                  name="googleBooksApiKey"
+                  helpText={translate('GoogleBooksApiKeyHelpText')}
+                  onChange={onInputChange}
+                  {...settings.googleBooksApiKey}
+                />
+              </FormGroup>
+            </FieldSet>
           </Form>
       }
     </div>

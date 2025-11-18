@@ -73,6 +73,18 @@ namespace NzbDrone.Core.Configuration
         bool UpdateCovers { get; set; }
         bool EmbedMetadata { get; set; }
 
+        //Metadata Providers
+        bool HardcoverEnabled { get; set; }
+        string HardcoverApiToken { get; set; }
+        string HardcoverUsername { get; set; }
+        bool OpenLibraryEnabled { get; set; }
+        bool GoogleBooksEnabled { get; set; }
+        string GoogleBooksApiKey { get; set; }
+
+        //Metadata Provider Caching
+        int GoogleBooksCacheTtlHours { get; set; }
+        int OpenLibraryCacheTtlHours { get; set; }
+
         //Forms Auth
         string RijndaelPassphrase { get; }
         string HmacPassphrase { get; }

@@ -12,6 +12,7 @@ import dimensions from 'Styles/Variables/dimensions';
 import fonts from 'Styles/Variables/fonts';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
+import ProviderBadge from '../Common/ProviderBadge';
 import AddNewBookModal from './AddNewBookModal';
 import styles from './AddNewBookSearchResult.css';
 
@@ -84,7 +85,11 @@ class AddNewBookSearchResult extends Component {
       editions,
       isExistingBook,
       isExistingAuthor,
-      isSmallScreen
+      isSmallScreen,
+      provider,
+      matchedProviders,
+      confidenceScore,
+      primarySource
     } = this.props;
 
     const {
@@ -177,6 +182,12 @@ class AddNewBookSearchResult extends Component {
                   </Label>
               }
 
+              <ProviderBadge
+                provider={provider}
+                matchedProviders={matchedProviders}
+                confidenceScore={confidenceScore}
+              />
+
             </div>
 
             <div
@@ -226,7 +237,12 @@ AddNewBookSearchResult.propTypes = {
   images: PropTypes.arrayOf(PropTypes.object).isRequired,
   isExistingBook: PropTypes.bool.isRequired,
   isExistingAuthor: PropTypes.bool.isRequired,
-  isSmallScreen: PropTypes.bool.isRequired
+  isSmallScreen: PropTypes.bool.isRequired,
+  // Multi-provider metadata
+  provider: PropTypes.string,
+  matchedProviders: PropTypes.arrayOf(PropTypes.string),
+  confidenceScore: PropTypes.number,
+  primarySource: PropTypes.string
 };
 
 export default AddNewBookSearchResult;

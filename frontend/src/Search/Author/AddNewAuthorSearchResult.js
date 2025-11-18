@@ -11,6 +11,7 @@ import dimensions from 'Styles/Variables/dimensions';
 import fonts from 'Styles/Variables/fonts';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
+import ProviderBadge from '../Common/ProviderBadge';
 import AddNewAuthorModal from './AddNewAuthorModal';
 import styles from './AddNewAuthorSearchResult.css';
 
@@ -82,7 +83,11 @@ class AddNewAuthorSearchResult extends Component {
       images,
       links,
       isExistingAuthor,
-      isSmallScreen
+      isSmallScreen,
+      provider,
+      matchedProviders,
+      confidenceScore,
+      primarySource
     } = this.props;
 
     const {
@@ -183,6 +188,12 @@ class AddNewAuthorSearchResult extends Component {
                   </Label> :
                   null
               }
+
+              <ProviderBadge
+                provider={provider}
+                matchedProviders={matchedProviders}
+                confidenceScore={confidenceScore}
+              />
             </div>
 
             <div
@@ -229,7 +240,12 @@ AddNewAuthorSearchResult.propTypes = {
   images: PropTypes.arrayOf(PropTypes.object).isRequired,
   links: PropTypes.arrayOf(PropTypes.object).isRequired,
   isExistingAuthor: PropTypes.bool.isRequired,
-  isSmallScreen: PropTypes.bool.isRequired
+  isSmallScreen: PropTypes.bool.isRequired,
+  // Multi-provider metadata
+  provider: PropTypes.string,
+  matchedProviders: PropTypes.arrayOf(PropTypes.string),
+  confidenceScore: PropTypes.number,
+  primarySource: PropTypes.string
 };
 
 export default AddNewAuthorSearchResult;

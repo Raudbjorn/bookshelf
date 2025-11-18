@@ -29,14 +29,25 @@ namespace NzbDrone.Core.Validation
         {
             ruleBuilder.SetValidator(new NotEmptyValidator(null));
 
-            return ruleBuilder.Must(x => HostRegex.IsMatch(x) || x.IsValidIpAddress()).WithMessage("must be valid Host without http://");
+            return ruleBuilder.Must(x =>
+                {
+                    // NotEmptyValidator already ensures x is not null or empty
+                    return HostRegex.IsMatch(x) || x.IsValidIpAddress();
+                }).WithMessage("must be valid Host without http://");
         }
 
         public static IRuleBuilderOptions<T, string> ValidRootUrl<T>(this IRuleBuilder<T, string> ruleBuilder)
         {
             ruleBuilder.SetValidator(new NotEmptyValidator(null));
 
-            return ruleBuilder.Must(x => x.IsValidUrl() && x.StartsWith("http", StringComparison.InvariantCultureIgnoreCase)).WithMessage("must be valid URL that starts with http(s)://");
+            return ruleBuilder.Must(x =>
+                {
+                    if (string.IsNullOrEmpty(x))
+                    {
+                        return false;
+                    }
+                    return x.IsValidUrl() && x.StartsWith("http", StringComparison.InvariantCultureIgnoreCase);
+                }).WithMessage("must be valid URL that starts with http(s)://");
         }
 
         public static IRuleBuilderOptions<T, string> ValidUrlBase<T>(this IRuleBuilder<T, string> ruleBuilder, string example = "/readarr")

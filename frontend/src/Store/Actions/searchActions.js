@@ -30,6 +30,10 @@ export const defaultState = {
   addError: null,
   items: [],
 
+  // Multi-provider search settings
+  searchMode: 'reconciled', // 'hardcover', 'openlibrary', 'googlebooks', 'reconciled', 'all'
+  selectedProviders: ['hardcover', 'openlibrary', 'googlebooks'],
+
   authorDefaults: {
     rootFolderPath: '',
     monitor: monitorOptions[0].key,
@@ -51,7 +55,9 @@ export const defaultState = {
 
 export const persistState = [
   'search.bookDefaults',
-  'search.authorDefaults'
+  'search.authorDefaults',
+  'search.searchMode',
+  'search.selectedProviders'
 ];
 
 //
@@ -63,6 +69,8 @@ export const ADD_BOOK = 'search/addBook';
 export const CLEAR_SEARCH_RESULTS = 'search/clearSearchResults';
 export const SET_AUTHOR_ADD_DEFAULT = 'search/setAuthorAddDefault';
 export const SET_BOOK_ADD_DEFAULT = 'search/setBookAddDefault';
+export const SET_SEARCH_MODE = 'search/setSearchMode';
+export const SET_SELECTED_PROVIDERS = 'search/setSelectedProviders';
 
 //
 // Action Creators
@@ -73,6 +81,8 @@ export const addBook = createThunk(ADD_BOOK);
 export const clearSearchResults = createAction(CLEAR_SEARCH_RESULTS);
 export const setAuthorAddDefault = createAction(SET_AUTHOR_ADD_DEFAULT);
 export const setBookAddDefault = createAction(SET_BOOK_ADD_DEFAULT);
+export const setSearchMode = createAction(SET_SEARCH_MODE);
+export const setSelectedProviders = createAction(SET_SELECTED_PROVIDERS);
 
 //
 // Action Handlers
@@ -86,18 +96,84 @@ export const actionHandlers = handleThunks({
       abortCurrentRequest();
     }
 
+    const state = getState().search;
+    const searchMode = payload.searchMode || state.searchMode;
+    const selectedProviders = payload.selectedProviders || state.selectedProviders;
+
+    // Determine the API endpoint based on search mode
+    let url = '/search';
+    let requestData = { term: payload.term };
+
+    if (searchMode === 'reconciled') {
+      url = '/search/provider/reconcile';
+      requestData.providers = selectedProviders.join(',');
+    } else if (searchMode === 'all') {
+      url = '/search/provider';
+      requestData.providers = selectedProviders.join(',');
+    } else if (['hardcover', 'openlibrary', 'googlebooks'].includes(searchMode)) {
+      url = `/search/provider/${searchMode}`;
+    }
+
     const { request, abortRequest } = createAjaxRequest({
-      url: '/search',
-      data: {
-        term: payload.term
-      }
+      url,
+      data: requestData
     });
 
     abortCurrentRequest = abortRequest;
 
     request.done((data) => {
+      // Transform reconciled response to match expected array format
+      let items = data;
+      if (searchMode === 'reconciled' && data.books) {
+        // Reconciled endpoint returns {query, books: [...], authors: [...]}
+        // Transform to flat array format like individual providers
+        // Flatten the nested book/author object to top level
+        const transformedBooks = (data.books || [])
+          .filter(item => item && item.book) // Filter out null/undefined items
+          .map((item, index) => {
+            // Ensure required fields are present
+            const foreignBookId = item.openLibraryId || item.googleBooksId || item.book?.foreignBookId || `reconciled-${index}`;
+            const titleSlug = item.book?.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || `book-${index}`;
+            const author = item.book?.author || { id: 0, authorName: item.book?.authorTitle || '' };
+
+            return {
+              // Keep book nested as the component expects item.book to exist
+              book: {
+                ...item.book,
+                // Override/ensure required fields are set AFTER spreading
+                foreignBookId,
+                titleSlug,
+                author
+              },
+              id: `reconciled-book-${index}`, // Unique ID for React keys
+              foreignId: foreignBookId,
+              matchedProviders: item.matchedProviders,
+              confidenceScore: item.confidenceScore,
+              primarySource: item.primarySource,
+              provider: 'reconciled'
+            };
+          });
+
+        const transformedAuthors = (data.authors || [])
+          .filter(item => item && item.author) // Filter out null/undefined items
+          .map((item, index) => ({
+            // Keep author nested as the component expects item.author to exist
+            author: {
+              ...item.author
+            },
+            id: `reconciled-author-${index}`, // Unique ID for React keys
+            foreignId: item.author.foreignAuthorId || item.author.id,
+            matchedProviders: item.matchedProviders,
+            confidenceScore: item.confidenceScore,
+            primarySource: item.primarySource,
+            provider: 'reconciled'
+          }));
+
+        items = [...transformedBooks, ...transformedAuthors];
+      }
+
       dispatch(batchActions([
-        update({ section, data }),
+        update({ section, data: items }),
 
         set({
           section,
@@ -239,6 +315,22 @@ export const reducers = createHandleActions({
     } = defaultState;
 
     return Object.assign({}, state, otherDefaultState);
+  },
+
+  [SET_SEARCH_MODE]: function(state, { payload }) {
+    const newState = getSectionState(state, section);
+
+    newState.searchMode = payload;
+
+    return updateSectionState(state, section, newState);
+  },
+
+  [SET_SELECTED_PROVIDERS]: function(state, { payload }) {
+    const newState = getSectionState(state, section);
+
+    newState.selectedProviders = payload;
+
+    return updateSectionState(state, section, newState);
   }
 
 }, defaultState, section);

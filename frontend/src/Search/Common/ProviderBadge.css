@@ -1,0 +1,18 @@
+.badge {
+  margin-right: 5px;
+  margin-bottom: 5px;
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.reconciledBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.confidenceBadge {
+  font-weight: bold;
+}

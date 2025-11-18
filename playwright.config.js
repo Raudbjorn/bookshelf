@@ -8,6 +8,9 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests/e2e',
 
+  /* Maximum time one test can run */
+  timeout: 30 * 1000,
+
   /* Run tests in files in parallel */
   fullyParallel: false,
 
@@ -21,7 +24,10 @@ module.exports = defineConfig({
   workers: process.env.CI ? 1 : 1,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'list',
+  reporter: [
+    ['html', { outputFolder: 'test-results/html' }],
+    ['list']
+  ],
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -36,6 +42,10 @@ module.exports = defineConfig({
 
     /* Video on failure */
     video: 'retain-on-failure',
+
+    /* Timeouts */
+    actionTimeout: 10 * 1000,
+    navigationTimeout: 15 * 1000,
   },
 
   /* Configure projects for major browsers */
