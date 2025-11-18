@@ -352,7 +352,7 @@ namespace NzbDrone.Core.Configuration
 
         public bool GoogleBooksEnabled
         {
-            get { return GetValueBoolean("GoogleBooksEnabled", true); }
+            get { return GetValueBoolean("GoogleBooksEnabled", false); }
 
             set { SetValue("GoogleBooksEnabled", value); }
         }
