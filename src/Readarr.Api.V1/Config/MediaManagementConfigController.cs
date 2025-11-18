@@ -1,8 +1,10 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Validation;
 using NzbDrone.Core.Validation.Paths;
+using NzbDrone.Http.REST.Attributes;
 using Readarr.Http;
 
 namespace Readarr.Api.V1.Config
@@ -33,6 +35,12 @@ namespace Readarr.Api.V1.Config
             SharedValidator.RuleFor(c => c.RecycleBinCleanupDays).GreaterThanOrEqualTo(0);
             SharedValidator.RuleFor(c => c.ChmodFolder).SetValidator(folderChmodValidator).When(c => !string.IsNullOrEmpty(c.ChmodFolder) && (OsInfo.IsLinux || OsInfo.IsOsx));
             SharedValidator.RuleFor(c => c.MinimumFreeSpaceWhenImporting).GreaterThanOrEqualTo(100);
+        }
+
+        [RestPutById]
+        public override ActionResult<MediaManagementConfigResource> SaveConfig([FromBody] MediaManagementConfigResource resource)
+        {
+            return base.SaveConfig(resource);
         }
 
         protected override MediaManagementConfigResource ToResource(IConfigService model)

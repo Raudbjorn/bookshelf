@@ -17,6 +17,9 @@ namespace NzbDrone.Core.Books
         }
 
         public string ForeignAuthorId { get; set; }
+        public string HardcoverAuthorId { get; set; }
+        public string OpenLibraryAuthorId { get; set; }
+        public string GoogleBooksAuthorId { get; set; }
         public string TitleSlug { get; set; }
         public string Name { get; set; }
         public string SortName { get; set; }
@@ -43,6 +46,9 @@ namespace NzbDrone.Core.Books
         public override void UseMetadataFrom(AuthorMetadata other)
         {
             ForeignAuthorId = other.ForeignAuthorId;
+            HardcoverAuthorId = other.HardcoverAuthorId;
+            OpenLibraryAuthorId = other.OpenLibraryAuthorId;
+            GoogleBooksAuthorId = other.GoogleBooksAuthorId;
             TitleSlug = other.TitleSlug;
             Name = other.Name;
             NameLastFirst = other.NameLastFirst;

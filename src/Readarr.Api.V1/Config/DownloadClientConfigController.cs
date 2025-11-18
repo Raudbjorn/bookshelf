@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Http.REST.Attributes;
 using Readarr.Http;
 
 namespace Readarr.Api.V1.Config
@@ -9,6 +11,12 @@ namespace Readarr.Api.V1.Config
         public DownloadClientConfigController(IConfigService configService)
             : base(configService)
         {
+        }
+
+        [RestPutById]
+        public override ActionResult<DownloadClientConfigResource> SaveConfig([FromBody] DownloadClientConfigResource resource)
+        {
+            return base.SaveConfig(resource);
         }
 
         protected override DownloadClientConfigResource ToResource(IConfigService model)

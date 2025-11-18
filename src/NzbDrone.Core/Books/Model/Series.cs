@@ -10,6 +10,8 @@ namespace NzbDrone.Core.Books
     public class Series : Entity<Series>
     {
         public string ForeignSeriesId { get; set; }
+        public string HardcoverSeriesId { get; set; }
+        public string OpenLibrarySeriesId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
         public bool Numbered { get; set; }
@@ -33,6 +35,8 @@ namespace NzbDrone.Core.Books
         public override void UseMetadataFrom(Series other)
         {
             ForeignSeriesId = other.ForeignSeriesId;
+            HardcoverSeriesId = other.HardcoverSeriesId;
+            OpenLibrarySeriesId = other.OpenLibrarySeriesId;
             Title = other.Title;
             Description = other.Description;
             Numbered = other.Numbered;

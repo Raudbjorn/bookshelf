@@ -13,6 +13,7 @@ import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import AddNewAuthorSearchResultConnector from './Author/AddNewAuthorSearchResultConnector';
 import AddNewBookSearchResultConnector from './Book/AddNewBookSearchResultConnector';
+import ProviderSelectorConnector from './Common/ProviderSelectorConnector';
 import styles from './AddNewItem.css';
 
 class AddNewItem extends Component {
@@ -118,6 +119,10 @@ class AddNewItem extends Component {
                 size={20}
               />
             </Button>
+          </div>
+
+          <div className={styles.providerSelector}>
+            <ProviderSelectorConnector />
           </div>
 
           {

@@ -322,6 +322,62 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EmbedMetadata", value); }
         }
 
+        public bool HardcoverEnabled
+        {
+            get { return GetValueBoolean("HardcoverEnabled", false); }
+
+            set { SetValue("HardcoverEnabled", value); }
+        }
+
+        public string HardcoverApiToken
+        {
+            get { return GetValue("HardcoverApiToken", string.Empty); }
+
+            set { SetValue("HardcoverApiToken", value); }
+        }
+
+        public string HardcoverUsername
+        {
+            get { return GetValue("HardcoverUsername", string.Empty); }
+
+            set { SetValue("HardcoverUsername", value); }
+        }
+
+        public bool OpenLibraryEnabled
+        {
+            get { return GetValueBoolean("OpenLibraryEnabled", true); }
+
+            set { SetValue("OpenLibraryEnabled", value); }
+        }
+
+        public bool GoogleBooksEnabled
+        {
+            get { return GetValueBoolean("GoogleBooksEnabled", false); }
+
+            set { SetValue("GoogleBooksEnabled", value); }
+        }
+
+        public string GoogleBooksApiKey
+        {
+            get { return GetValue("GoogleBooksApiKey", string.Empty); }
+
+            set { SetValue("GoogleBooksApiKey", value); }
+        }
+
+        public int GoogleBooksCacheTtlHours
+        {
+            get { return GetValueInt("GoogleBooksCacheTtlHours", 1); }
+
+            set { SetValue("GoogleBooksCacheTtlHours", value); }
+        }
+
+        public int OpenLibraryCacheTtlHours
+        {
+            get { return GetValueInt("OpenLibraryCacheTtlHours", 1); }
+
+            set { SetValue("OpenLibraryCacheTtlHours", value); }
+        }
+
         public int FirstDayOfWeek
         {
             get { return GetValueInt("FirstDayOfWeek", (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek); }
