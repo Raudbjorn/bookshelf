@@ -173,6 +173,7 @@ namespace Readarr.Api.V1.Search
         }
 
         [HttpGet("reconcile")]
+        [HttpGet("reconciled")] // Alias for UI compatibility
         public object SearchReconciled([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks")
         {
             _logger.Info($"[ProviderSearch] Reconciled search requested for: '{term}' (providers: {providers})");

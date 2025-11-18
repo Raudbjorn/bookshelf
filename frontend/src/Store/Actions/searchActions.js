@@ -122,8 +122,58 @@ export const actionHandlers = handleThunks({
     abortCurrentRequest = abortRequest;
 
     request.done((data) => {
+      // Transform reconciled response to match expected array format
+      let items = data;
+      if (searchMode === 'reconciled' && data.books) {
+        // Reconciled endpoint returns {query, books: [...], authors: [...]}
+        // Transform to flat array format like individual providers
+        // Flatten the nested book/author object to top level
+        const transformedBooks = (data.books || [])
+          .filter(item => item && item.book) // Filter out null/undefined items
+          .map((item, index) => {
+            // Ensure required fields are present
+            const foreignBookId = item.openLibraryId || item.googleBooksId || item.book?.foreignBookId || `reconciled-${index}`;
+            const titleSlug = item.book?.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || `book-${index}`;
+            const author = item.book?.author || { id: 0, authorName: item.book?.authorTitle || '' };
+
+            return {
+              // Keep book nested as the component expects item.book to exist
+              book: {
+                ...item.book,
+                // Override/ensure required fields are set AFTER spreading
+                foreignBookId,
+                titleSlug,
+                author
+              },
+              id: `reconciled-book-${index}`, // Unique ID for React keys
+              foreignId: foreignBookId,
+              matchedProviders: item.matchedProviders,
+              confidenceScore: item.confidenceScore,
+              primarySource: item.primarySource,
+              provider: 'reconciled'
+            };
+          });
+
+        const transformedAuthors = (data.authors || [])
+          .filter(item => item && item.author) // Filter out null/undefined items
+          .map((item, index) => ({
+            // Keep author nested as the component expects item.author to exist
+            author: {
+              ...item.author
+            },
+            id: `reconciled-author-${index}`, // Unique ID for React keys
+            foreignId: item.author.foreignAuthorId || item.author.id,
+            matchedProviders: item.matchedProviders,
+            confidenceScore: item.confidenceScore,
+            primarySource: item.primarySource,
+            provider: 'reconciled'
+          }));
+
+        items = [...transformedBooks, ...transformedAuthors];
+      }
+
       dispatch(batchActions([
-        update({ section, data }),
+        update({ section, data: items }),
 
         set({
           section,
