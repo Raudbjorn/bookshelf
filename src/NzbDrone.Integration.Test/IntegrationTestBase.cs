@@ -47,6 +47,7 @@ namespace NzbDrone.Integration.Test
         public ClientBase<NamingConfigResource> NamingConfig;
         public NotificationClient Notifications;
         public ClientBase<QualityProfileResource> Profiles;
+        public ProviderSearchClient ProviderSearch;
         public ReleaseClient Releases;
         public ReleasePushClient ReleasePush;
         public ClientBase<RootFolderResource> RootFolders;
@@ -112,6 +113,7 @@ namespace NzbDrone.Integration.Test
             NamingConfig = new ClientBase<NamingConfigResource>(RestClient, ApiKey, "config/naming");
             Notifications = new NotificationClient(RestClient, ApiKey);
             Profiles = new ClientBase<QualityProfileResource>(RestClient, ApiKey);
+            ProviderSearch = new ProviderSearchClient(RestClient, ApiKey);
             Releases = new ReleaseClient(RestClient, ApiKey);
             ReleasePush = new ReleasePushClient(RestClient, ApiKey);
             RootFolders = new ClientBase<RootFolderResource>(RestClient, ApiKey);

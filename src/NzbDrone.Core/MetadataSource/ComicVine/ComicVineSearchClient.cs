@@ -11,11 +11,11 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http;
 
-namespace NzbDrone.Core.MetadataSource.OpenLibrary
+namespace NzbDrone.Core.MetadataSource.ComicVine
 {
-    public class OpenLibrarySearchClient : IOpenLibrarySearchClient
+    public class ComicVineSearchClient : IComicVineSearchClient
     {
-        private const string OPENLIBRARY_ENDPOINT = "https://openlibrary.org";
+        private const string COMICVINE_ENDPOINT = "https://comicvine.gamespot.com/api";
         private const int TIMEOUT_SECONDS = 10;
         private const int MAX_RESULTS = 10;
         private const int RATE_LIMIT_MS = 1000;
@@ -28,7 +28,7 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
         private readonly IConfigService _configService;
         private readonly Logger _logger;
 
-        public OpenLibrarySearchClient(IHttpClient httpClient, ICachedHttpResponseService cachedHttpClient, IConfigService configService)
+        public ComicVineSearchClient(IHttpClient httpClient, ICachedHttpResponseService cachedHttpClient, IConfigService configService)
         {
             _httpClient = httpClient;
             _cachedHttpClient = cachedHttpClient;
@@ -43,9 +43,9 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
                 return new List<object>();
             }
 
-            if (!_configService.OpenLibraryEnabled)
+            if (!_configService.ComicVineEnabled || string.IsNullOrEmpty(_configService.ComicVineApiKey))
             {
-                _logger.Debug("OpenLibrary search skipped - not enabled");
+                _logger.Debug("ComicVine search skipped - not enabled or no API key configured");
                 return null;
             }
 
@@ -60,16 +60,16 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
                 var results = ExecuteSearch(trimmed);
                 if (results != null && results.Count > 0)
                 {
-                    _logger.Info($"OpenLibrary search successful: {results.Count} results for '{trimmed}'");
+                    _logger.Info($"ComicVine search successful: {results.Count} results for '{trimmed}'");
                     return results;
                 }
 
-                _logger.Warn($"OpenLibrary search returned no results for '{trimmed}'");
+                _logger.Warn($"ComicVine search returned no results for '{trimmed}'");
                 return new List<object>();
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, $"OpenLibrary search failed for '{searchTerm}' - falling back to next provider");
+                _logger.Error(ex, $"ComicVine search failed for '{searchTerm}' - falling back to next provider");
                 return null;
             }
         }
@@ -77,10 +77,10 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
         private List<object> ExecuteSearch(string query)
         {
             var encodedQuery = Uri.EscapeDataString(query);
-            var request = new HttpRequestBuilder(OPENLIBRARY_ENDPOINT)
-                .Resource($"search.json?q={encodedQuery}&limit={MAX_RESULTS}")
+            var request = new HttpRequestBuilder(COMICVINE_ENDPOINT)
+                .Resource($"search/?api_key={_configService.ComicVineApiKey}&format=json&resources=issue&query={encodedQuery}&limit={MAX_RESULTS}")
                 .SetHeader("Accept", "application/json")
-                .SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .SetHeader("User-Agent", "Bookshelf/1.0 (Readarr Fork)")
                 .Build();
 
             request.Method = HttpMethod.Get;
@@ -115,7 +115,7 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
         {
             // Use cached response if available (1 hour TTL by default)
             var useCache = true;
-            var cacheTtl = TimeSpan.FromHours(_configService.OpenLibraryCacheTtlHours);
+            var cacheTtl = TimeSpan.FromHours(_configService.ComicVineCacheTtlHours);
 
             for (var attempt = 1; attempt <= 2; attempt++)
             {
@@ -129,10 +129,17 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
                         return response;
                     }
 
+                    // Handle 401 Unauthorized
+                    if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        _logger.Warn("ComicVine API returned 401 - invalid API key");
+                        return null;
+                    }
+
                     // Handle 429 Too Many Requests - rate limiting
                     if (response.StatusCode == HttpStatusCode.TooManyRequests)
                     {
-                        _logger.Warn($"OpenLibrary API rate limit hit (429) - attempt {attempt}/2");
+                        _logger.Warn($"ComicVine API rate limit hit (429) - attempt {attempt}/2");
 
                         if (attempt == 1)
                         {
@@ -144,7 +151,7 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
                     // Handle 5xx server errors
                     if (response.StatusCode >= HttpStatusCode.InternalServerError)
                     {
-                        _logger.Warn($"OpenLibrary API server error ({response.StatusCode}) - attempt {attempt}/2");
+                        _logger.Warn($"ComicVine API server error ({response.StatusCode}) - attempt {attempt}/2");
 
                         if (attempt == 1)
                         {
@@ -153,12 +160,12 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
                         }
                     }
 
-                    _logger.Error($"OpenLibrary API error: {response.StatusCode}");
+                    _logger.Error($"ComicVine API error: {response.StatusCode}");
                     return null;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"OpenLibrary API request failed (attempt {attempt}/2): {ex.Message}");
+                    _logger.Warn($"ComicVine API request failed (attempt {attempt}/2): {ex.Message}");
 
                     if (attempt == 1 && IsRetryableException(ex))
                     {
@@ -187,93 +194,44 @@ namespace NzbDrone.Core.MetadataSource.OpenLibrary
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 };
 
-                var searchResult = JsonSerializer.Deserialize<OpenLibrarySearchResult>(responseContent, jsonOptions);
+                var searchResult = JsonSerializer.Deserialize<ComicVineSearchResponse>(responseContent, jsonOptions);
 
-                if (searchResult?.Docs == null || !searchResult.Docs.Any())
+                if (searchResult == null)
                 {
-                    _logger.Debug("OpenLibrary response contained no documents");
+                    _logger.Error("ComicVine response is null");
+                    return null;
+                }
+
+                // Check for API errors
+                if (searchResult.StatusCode != 1)
+                {
+                    _logger.Error($"ComicVine API returned error status: {searchResult.StatusCode} - {searchResult.Error}");
+                    return null;
+                }
+
+                if (searchResult.Results == null || !searchResult.Results.Any())
+                {
+                    _logger.Debug("ComicVine response contained no results");
                     return new List<object>();
                 }
 
                 var results = new List<object>();
 
-                foreach (var doc in searchResult.Docs)
+                foreach (var issue in searchResult.Results)
                 {
-                    if (doc != null && !string.IsNullOrWhiteSpace(doc.Key))
+                    if (issue != null)
                     {
-                        // Fetch ratings if not already present
-                        if ((!doc.RatingsAverage.HasValue || !doc.RatingsCount.HasValue) && doc.Key.StartsWith("/works/"))
-                        {
-                            EnrichWithRatings(doc);
-                        }
-
-                        results.Add(doc);
+                        results.Add(issue);
                     }
                 }
 
-                _logger.Debug($"Parsed {results.Count} OpenLibrary search results");
+                _logger.Debug($"Parsed {results.Count} ComicVine search results");
                 return results;
             }
             catch (JsonException ex)
             {
-                _logger.Error(ex, $"Failed to parse OpenLibrary response: {ex.Message}");
+                _logger.Error(ex, $"Failed to parse ComicVine response: {ex.Message}");
                 return null;
-            }
-        }
-
-        private void EnrichWithRatings(OpenLibrarySearchDoc doc)
-        {
-            try
-            {
-                var ratingsUrl = $"{OPENLIBRARY_ENDPOINT}{doc.Key}/ratings.json";
-                var request = new HttpRequestBuilder(ratingsUrl)
-                    .SetHeader("Accept", "application/json")
-                    .SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                    .Build();
-
-                request.Method = HttpMethod.Get;
-
-                RateLimitRequest();
-
-                // Use cached HTTP client with longer TTL for ratings (they don't change often)
-                var cacheTtl = TimeSpan.FromHours(_configService.OpenLibraryCacheTtlHours * 2);
-                var response = _cachedHttpClient.Get(request, true, cacheTtl);
-
-                if (response != null && !response.HasHttpError)
-                {
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                    };
-
-                    using var jsonDocument = JsonDocument.Parse(response.Content);
-                    var root = jsonDocument.RootElement;
-
-                    if (root.TryGetProperty("summary", out var summary))
-                    {
-                        if (summary.TryGetProperty("average", out var average) && average.ValueKind == JsonValueKind.Number)
-                        {
-                            doc.RatingsAverage = average.GetSingle();
-                        }
-
-                        if (summary.TryGetProperty("count", out var count) && count.ValueKind == JsonValueKind.Number)
-                        {
-                            doc.RatingsCount = count.GetInt32();
-                        }
-
-                        if (doc.RatingsAverage.HasValue && doc.RatingsCount.HasValue)
-                        {
-                            _logger.Debug($"Enriched '{doc.Title}' with ratings: {doc.RatingsAverage:F2} ({doc.RatingsCount} votes)");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug(ex, $"Failed to fetch ratings for '{doc.Title}' - ratings will be empty");
-
-                // Don't fail the whole search if ratings fetch fails
             }
         }
     }

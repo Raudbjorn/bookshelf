@@ -30,6 +30,10 @@ function ProviderSelector(props) {
       value: 'Google Books'
     },
     {
+      key: 'comicvine',
+      value: 'ComicVine'
+    },
+    {
       key: 'all',
       value: translate('AllProvidersGrouped')
     }

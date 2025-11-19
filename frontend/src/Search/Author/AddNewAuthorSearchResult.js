@@ -152,17 +152,21 @@ class AddNewAuthorSearchResult extends Component {
                     null
                 }
 
-                <Link
-                  className={styles.mbLink}
-                  to={`${links[0].url}`}
-                  onPress={this.onMBLinkPress}
-                >
-                  <Icon
-                    className={styles.mbLinkIcon}
-                    name={icons.EXTERNAL_LINK}
-                    size={28}
-                  />
-                </Link>
+                {
+                  links && links.length > 0 && links[0].url ?
+                    <Link
+                      className={styles.mbLink}
+                      to={`${links[0].url}`}
+                      onPress={this.onMBLinkPress}
+                    >
+                      <Icon
+                        className={styles.mbLinkIcon}
+                        name={icons.EXTERNAL_LINK}
+                        size={28}
+                      />
+                    </Link> :
+                    null
+                }
               </div>
             </div>
 

@@ -364,6 +364,20 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("GoogleBooksApiKey", value); }
         }
 
+        public bool ComicVineEnabled
+        {
+            get { return GetValueBoolean("ComicVineEnabled", false); }
+
+            set { SetValue("ComicVineEnabled", value); }
+        }
+
+        public string ComicVineApiKey
+        {
+            get { return GetValue("ComicVineApiKey", string.Empty); }
+
+            set { SetValue("ComicVineApiKey", value); }
+        }
+
         public int GoogleBooksCacheTtlHours
         {
             get { return GetValueInt("GoogleBooksCacheTtlHours", 1); }
@@ -376,6 +390,13 @@ namespace NzbDrone.Core.Configuration
             get { return GetValueInt("OpenLibraryCacheTtlHours", 1); }
 
             set { SetValue("OpenLibraryCacheTtlHours", value); }
+        }
+
+        public int ComicVineCacheTtlHours
+        {
+            get { return GetValueInt("ComicVineCacheTtlHours", 1); }
+
+            set { SetValue("ComicVineCacheTtlHours", value); }
         }
 
         public int FirstDayOfWeek

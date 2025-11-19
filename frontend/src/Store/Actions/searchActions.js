@@ -31,8 +31,8 @@ export const defaultState = {
   items: [],
 
   // Multi-provider search settings
-  searchMode: 'reconciled', // 'hardcover', 'openlibrary', 'googlebooks', 'reconciled', 'all'
-  selectedProviders: ['hardcover', 'openlibrary', 'googlebooks'],
+  searchMode: 'reconciled', // 'hardcover', 'openlibrary', 'googlebooks', 'comicvine', 'reconciled', 'all'
+  selectedProviders: ['hardcover', 'openlibrary', 'googlebooks', 'comicvine'],
 
   authorDefaults: {
     rootFolderPath: '',
@@ -110,7 +110,7 @@ export const actionHandlers = handleThunks({
     } else if (searchMode === 'all') {
       url = '/search/provider';
       requestData.providers = selectedProviders.join(',');
-    } else if (['hardcover', 'openlibrary', 'googlebooks'].includes(searchMode)) {
+    } else if (['hardcover', 'openlibrary', 'googlebooks', 'comicvine'].includes(searchMode)) {
       url = `/search/provider/${searchMode}`;
     }
 
@@ -122,8 +122,67 @@ export const actionHandlers = handleThunks({
     abortCurrentRequest = abortRequest;
 
     request.done((data) => {
+      // Transform reconciled search response to match standard format
+      let items = data;
+      if (searchMode === 'reconciled' && data.books && data.authors) {
+        // Convert reconciled books to search items
+        const bookItems = (data.books || [])
+          .filter(item => item && item.book)
+          .map((item, index) => {
+            const foreignId = item.book.foreignBookId || item.openLibraryId || item.googleBooksId || item.hardcoverId || `reconciled-book-${index}`;
+            const book = item.book;
+
+            // Ensure book has an author object for compatibility
+            if (!book.author) {
+              book.author = {
+                id: book.authorId || 0,
+                authorName: book.authorTitle || '',
+                authorNameLastFirst: book.authorTitle || '',
+                foreignAuthorId: '',
+                titleSlug: '',
+                images: [],
+                links: []
+              };
+            }
+
+            return {
+              id: index + 1,
+              book: book,
+              foreignId: foreignId,
+              // Include provider IDs for display
+              hardcoverId: item.hardcoverId,
+              openLibraryId: item.openLibraryId,
+              googleBooksId: item.googleBooksId,
+              matchedProviders: item.matchedProviders,
+              confidenceScore: item.confidenceScore,
+              primarySource: item.primarySource
+            };
+          });
+
+        // Convert reconciled authors to search items
+        const authorItems = (data.authors || [])
+          .filter(item => item && item.author)
+          .map((item, index) => {
+            const foreignId = item.author.foreignAuthorId || item.openLibraryId || item.googleBooksId || item.hardcoverId || `reconciled-author-${index}`;
+            return {
+              id: bookItems.length + index + 1,
+              author: item.author,
+              foreignId: foreignId,
+              // Include provider IDs for display
+              hardcoverId: item.hardcoverId,
+              openLibraryId: item.openLibraryId,
+              googleBooksId: item.googleBooksId,
+              matchedProviders: item.matchedProviders,
+              confidenceScore: item.confidenceScore,
+              primarySource: item.primarySource
+            };
+          });
+
+        items = [...bookItems, ...authorItems];
+      }
+
       dispatch(batchActions([
-        update({ section, data }),
+        update({ section, data: items }),
 
         set({
           section,

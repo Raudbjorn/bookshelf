@@ -8,5 +8,6 @@ namespace Readarr.Api.V1.Search
         public List<SearchResource> Hardcover { get; set; }
         public List<SearchResource> OpenLibrary { get; set; }
         public List<SearchResource> GoogleBooks { get; set; }
+        public List<SearchResource> ComicVine { get; set; }
     }
 }
