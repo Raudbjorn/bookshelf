@@ -41,6 +41,17 @@ namespace NzbDrone.Integration.Test.ApiTests
             ProviderSearch.Put<MetadataProviderConfigResource>(request);
         }
 
+        private string GetComicVineApiKeyOrIgnore()
+        {
+            var apiKey = Environment.GetEnvironmentVariable("COMICVINE_API_KEY");
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                Assert.Ignore("COMICVINE_API_KEY environment variable not set - skipping ComicVine test");
+            }
+
+            return apiKey;
+        }
+
         [Test]
         public void hardcover_search_should_return_results()
         {
@@ -165,11 +176,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         public void comicvine_search_should_return_results()
         {
             // Arrange
-            var apiKey = Environment.GetEnvironmentVariable("COMICVINE_API_KEY");
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                Assert.Ignore("COMICVINE_API_KEY environment variable not set - skipping ComicVine test");
-            }
+            var apiKey = GetComicVineApiKeyOrIgnore();
 
             var config = GetMetadataProviderConfig();
             config.ComicVineEnabled = true;
@@ -207,11 +214,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         public void comicvine_search_with_disabled_provider_should_return_empty()
         {
             // Arrange
-            var apiKey = Environment.GetEnvironmentVariable("COMICVINE_API_KEY");
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                Assert.Ignore("COMICVINE_API_KEY environment variable not set - skipping ComicVine test");
-            }
+            var apiKey = GetComicVineApiKeyOrIgnore();
 
             var config = GetMetadataProviderConfig();
             config.ComicVineEnabled = false;
@@ -230,11 +233,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         public void comicvine_results_should_have_comic_specific_fields()
         {
             // Arrange
-            var apiKey = Environment.GetEnvironmentVariable("COMICVINE_API_KEY");
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                Assert.Ignore("COMICVINE_API_KEY environment variable not set - skipping ComicVine test");
-            }
+            var apiKey = GetComicVineApiKeyOrIgnore();
 
             var config = GetMetadataProviderConfig();
             config.ComicVineEnabled = true;
@@ -276,11 +275,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         public void comicvine_search_in_multi_provider_should_be_included()
         {
             // Arrange
-            var apiKey = Environment.GetEnvironmentVariable("COMICVINE_API_KEY");
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                Assert.Ignore("COMICVINE_API_KEY environment variable not set - skipping ComicVine test");
-            }
+            var apiKey = GetComicVineApiKeyOrIgnore();
 
             var config = GetMetadataProviderConfig();
             config.HardcoverEnabled = false;
@@ -304,11 +299,7 @@ namespace NzbDrone.Integration.Test.ApiTests
         public void comicvine_search_should_handle_special_characters()
         {
             // Arrange
-            var apiKey = Environment.GetEnvironmentVariable("COMICVINE_API_KEY");
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                Assert.Ignore("COMICVINE_API_KEY environment variable not set - skipping ComicVine test");
-            }
+            var apiKey = GetComicVineApiKeyOrIgnore();
 
             var config = GetMetadataProviderConfig();
             config.ComicVineEnabled = true;

@@ -433,7 +433,7 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = googleBookItem.VolumeInfo?.Title ?? "Unknown",
-                        TitleSlug = (googleBookItem.VolumeInfo?.Title ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(googleBookItem.VolumeInfo?.Title),
                         ForeignBookId = $"googlebooks:{googleBookItem.Id}",
                         Overview = googleBookItem.VolumeInfo?.Description,
                         PageCount = googleBookItem.VolumeInfo?.PageCount ?? 0,
@@ -456,7 +456,7 @@ namespace Readarr.Api.V1.Search
                     bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
                         AuthorName = authorName,
-                        TitleSlug = authorName.ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(authorName),
                         Status = AuthorStatusType.Continuing,
                         Monitored = false,
                         MonitorNewItems = NewItemMonitorTypes.All,
@@ -506,7 +506,7 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = openLibraryDoc.Title ?? "Unknown",
-                        TitleSlug = (openLibraryDoc.Title ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(openLibraryDoc.Title),
                         ForeignBookId = $"openlibrary:{openLibraryDoc.Key}",
                         Overview = openLibraryDoc.Subject != null && openLibraryDoc.Subject.Any()
                             ? string.Join(", ", openLibraryDoc.Subject.Take(5))
@@ -531,7 +531,7 @@ namespace Readarr.Api.V1.Search
                     bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
                         AuthorName = authorName,
-                        TitleSlug = authorName.ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(authorName),
                         Status = AuthorStatusType.Continuing,
                         Monitored = false,
                         MonitorNewItems = NewItemMonitorTypes.All,
@@ -582,7 +582,7 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = hardcoverBook.Title ?? "Unknown",
-                        TitleSlug = (hardcoverBook.Title ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(hardcoverBook.Title),
                         ForeignBookId = $"hardcover:{hardcoverBook.Id}",
                         Overview = hardcoverBook.Description,
                         PageCount = hardcoverBook.Pages,
@@ -605,7 +605,7 @@ namespace Readarr.Api.V1.Search
                     bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
                         AuthorName = authorName,
-                        TitleSlug = authorName.ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(authorName),
                         Status = AuthorStatusType.Continuing,
                         Monitored = false,
                         MonitorNewItems = NewItemMonitorTypes.All,
@@ -655,7 +655,7 @@ namespace Readarr.Api.V1.Search
                     var authorResource = new Readarr.Api.V1.Author.AuthorResource
                     {
                         AuthorName = hardcoverAuthor.Name ?? "Unknown",
-                        TitleSlug = (hardcoverAuthor.Slug ?? hardcoverAuthor.Name ?? "unknown").ToLower().Replace(" ", "-"),
+                        TitleSlug = GenerateTitleSlug(hardcoverAuthor.Slug ?? hardcoverAuthor.Name),
                         ForeignAuthorId = $"hardcover:{hardcoverAuthor.Id}",
                         Overview = hardcoverAuthor.Bio,
                         Status = AuthorStatusType.Continuing,
@@ -695,7 +695,7 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = hardcoverSeries.Name ?? "Unknown",
-                        TitleSlug = (hardcoverSeries.Slug ?? hardcoverSeries.Name ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(hardcoverSeries.Slug ?? hardcoverSeries.Name),
                         ForeignBookId = $"hardcover:series:{hardcoverSeries.Id}",
                         SeriesTitle = hardcoverSeries.Name,
                         Overview = hardcoverSeries.Description,
@@ -715,7 +715,7 @@ namespace Readarr.Api.V1.Search
                     bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
                         AuthorName = seriesAuthorName,
-                        TitleSlug = seriesAuthorName.ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(seriesAuthorName),
                         Status = AuthorStatusType.Continuing,
                         Monitored = false,
                         MonitorNewItems = NewItemMonitorTypes.All,
@@ -738,7 +738,7 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = title,
-                        TitleSlug = title.ToLower().Replace(" ", "-").Replace("'", "").Replace("#", "").Replace(":", ""),
+                        TitleSlug = GenerateTitleSlug(title),
                         ForeignBookId = $"comicvine:{comicVineIssue.Id}",
                         Overview = comicVineIssue.Description,
                         PageCount = 0,
@@ -756,7 +756,7 @@ namespace Readarr.Api.V1.Search
                     bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
                         AuthorName = authorName,
-                        TitleSlug = authorName.ToLower().Replace(" ", "-").Replace("'", ""),
+                        TitleSlug = GenerateTitleSlug(authorName),
                         Status = AuthorStatusType.Continuing,
                         Monitored = false,
                         MonitorNewItems = NewItemMonitorTypes.All,
@@ -855,7 +855,7 @@ namespace Readarr.Api.V1.Search
                 Title = googleBookItem.VolumeInfo?.Title ?? "Unknown",
                 GoogleBooksId = googleBookItem.Id,
                 ForeignBookId = googleBookItem.Id,  // Use GoogleBooks ID as foreign ID
-                TitleSlug = (googleBookItem.VolumeInfo?.Title ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                TitleSlug = GenerateTitleSlug(googleBookItem.VolumeInfo?.Title),
                 Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
@@ -905,7 +905,7 @@ namespace Readarr.Api.V1.Search
                 Title = openLibraryDoc.Title ?? "Unknown",
                 OpenLibraryWorkId = openLibraryDoc.Key,
                 ForeignBookId = openLibraryDoc.Key,  // Use OpenLibrary ID as foreign ID
-                TitleSlug = (openLibraryDoc.Title ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                TitleSlug = GenerateTitleSlug(openLibraryDoc.Title),
                 Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
@@ -952,7 +952,7 @@ namespace Readarr.Api.V1.Search
                 Title = hardcoverBook.Title ?? "Unknown",
                 HardcoverBookId = hardcoverBook.Id,
                 ForeignBookId = hardcoverBook.Id,  // Use Hardcover ID as foreign ID
-                TitleSlug = (hardcoverBook.Title ?? "unknown").ToLower().Replace(" ", "-").Replace("'", ""),
+                TitleSlug = GenerateTitleSlug(hardcoverBook.Title),
                 Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
@@ -1045,7 +1045,7 @@ namespace Readarr.Api.V1.Search
                 Title = title,
                 ComicVineIssueId = comicVineIssue.Id.ToString(),
                 ForeignBookId = comicVineIssue.Id.ToString(),  // Use ComicVine ID as foreign ID
-                TitleSlug = title.ToLower().Replace(" ", "-").Replace("'", "").Replace("#", ""),
+                TitleSlug = GenerateTitleSlug(title),
                 Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
@@ -1058,6 +1058,20 @@ namespace Readarr.Api.V1.Search
             }
 
             return book;
+        }
+
+        private string GenerateTitleSlug(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return "unknown";
+            }
+
+            return title.ToLower()
+                .Replace(" ", "-")
+                .Replace("'", "")
+                .Replace("#", "")
+                .Replace(":", "");
         }
     }
 }
