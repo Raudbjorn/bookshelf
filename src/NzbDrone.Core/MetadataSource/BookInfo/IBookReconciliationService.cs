@@ -5,8 +5,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 {
     public interface IBookReconciliationService
     {
-        List<ReconciledBook> ReconcileBooks(List<Book> hardcoverBooks, List<Book> openLibraryBooks, List<Book> googleBooksBooks);
-        List<ReconciledAuthor> ReconcileAuthors(List<Author> hardcoverAuthors, List<Author> openLibraryAuthors, List<Author> googleBooksAuthors);
+        List<ReconciledBook> ReconcileBooks(List<Book> hardcoverBooks, List<Book> openLibraryBooks, List<Book> googleBooksBooks, List<Book> comicVineBooks);
+        List<ReconciledAuthor> ReconcileAuthors(List<Author> hardcoverAuthors, List<Author> openLibraryAuthors, List<Author> googleBooksAuthors, List<Author> comicVineAuthors);
     }
 
     public class ReconciledBook
@@ -15,6 +15,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public string HardcoverId { get; set; }
         public string OpenLibraryId { get; set; }
         public string GoogleBooksId { get; set; }
+        public string ComicVineId { get; set; }
         public string GoodreadsId { get; set; }
         public List<string> MatchedProviders { get; set; }
         public decimal ConfidenceScore { get; set; }
@@ -27,6 +28,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public string HardcoverId { get; set; }
         public string OpenLibraryId { get; set; }
         public string GoogleBooksId { get; set; }
+        public string ComicVineId { get; set; }
         public string GoodreadsId { get; set; }
         public List<string> MatchedProviders { get; set; }
         public decimal ConfidenceScore { get; set; }

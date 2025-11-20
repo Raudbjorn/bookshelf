@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
@@ -211,7 +212,7 @@ namespace Readarr.Api.V1.Search
         }
 
         [HttpGet("reconcile")]
-        public object SearchReconciled([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks")
+        public object SearchReconciled([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks,comicvine")
         {
             _logger.Info($"[ProviderSearch] Reconciled search requested for: '{term}' (providers: {providers})");
 
@@ -231,9 +232,11 @@ namespace Readarr.Api.V1.Search
             var hardcoverBooks = new List<Book>();
             var openLibraryBooks = new List<Book>();
             var googleBooksBooks = new List<Book>();
+            var comicVineBooks = new List<Book>();
             var hardcoverAuthors = new List<NzbDrone.Core.Books.Author>();
             var openLibraryAuthors = new List<NzbDrone.Core.Books.Author>();
             var googleBooksAuthors = new List<NzbDrone.Core.Books.Author>();
+            var comicVineAuthors = new List<NzbDrone.Core.Books.Author>();
 
             if (providerList.Contains("hardcover"))
             {
@@ -306,9 +309,30 @@ namespace Readarr.Api.V1.Search
                 }
             }
 
+            if (providerList.Contains("comicvine"))
+            {
+                var results = _comicVineSearchClient?.Search(term);
+                if (results != null)
+                {
+                    foreach (var result in results)
+                    {
+                        if (result is NzbDrone.Core.MetadataSource.ComicVine.ComicVineIssueResult comicVineIssue)
+                        {
+                            var book = ConvertComicVineIssueToDomain(comicVineIssue);
+                            if (book != null)
+                            {
+                                comicVineBooks.Add(book);
+                            }
+                        }
+                    }
+
+                    _logger.Info($"[Reconcile] ComicVine: {comicVineBooks.Count} books, {comicVineAuthors.Count} authors");
+                }
+            }
+
             // Reconcile books and authors
-            var reconciledBooks = _reconciliationService.ReconcileBooks(hardcoverBooks, openLibraryBooks, googleBooksBooks);
-            var reconciledAuthors = _reconciliationService.ReconcileAuthors(hardcoverAuthors, openLibraryAuthors, googleBooksAuthors);
+            var reconciledBooks = _reconciliationService.ReconcileBooks(hardcoverBooks, openLibraryBooks, googleBooksBooks, comicVineBooks);
+            var reconciledAuthors = _reconciliationService.ReconcileAuthors(hardcoverAuthors, openLibraryAuthors, googleBooksAuthors, comicVineAuthors);
 
             _logger.Info($"[Reconcile] Reconciliation complete: {reconciledBooks.Count} unique books, {reconciledAuthors.Count} unique authors");
 
@@ -322,6 +346,7 @@ namespace Readarr.Api.V1.Search
                     HardcoverId = rb.HardcoverId,
                     OpenLibraryId = rb.OpenLibraryId,
                     GoogleBooksId = rb.GoogleBooksId,
+                    ComicVineId = rb.ComicVineId,
                     GoodreadsId = rb.GoodreadsId,
                     MatchedProviders = rb.MatchedProviders,
                     ConfidenceScore = rb.ConfidenceScore,
@@ -333,6 +358,7 @@ namespace Readarr.Api.V1.Search
                     HardcoverId = ra.HardcoverId,
                     OpenLibraryId = ra.OpenLibraryId,
                     GoogleBooksId = ra.GoogleBooksId,
+                    ComicVineId = ra.ComicVineId,
                     GoodreadsId = ra.GoodreadsId,
                     MatchedProviders = ra.MatchedProviders,
                     ConfidenceScore = ra.ConfidenceScore,
@@ -960,6 +986,78 @@ namespace Readarr.Api.V1.Search
             }
 
             return author;
+        }
+
+        private Book ConvertComicVineIssueToDomain(NzbDrone.Core.MetadataSource.ComicVine.ComicVineIssueResult comicVineIssue)
+        {
+            if (comicVineIssue == null || comicVineIssue.Id == 0)
+            {
+                return null;
+            }
+
+            // Build title from volume name and issue number
+            var title = comicVineIssue.Volume?.Name ?? "Unknown";
+            if (!string.IsNullOrWhiteSpace(comicVineIssue.IssueNumber))
+            {
+                title += $" #{comicVineIssue.IssueNumber}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(comicVineIssue.Name))
+            {
+                title += $" - {comicVineIssue.Name}";
+            }
+
+            // Create edition with detailed metadata
+            var edition = new Edition
+            {
+                Title = title,
+                Overview = comicVineIssue.Description,
+                Monitored = true,  // Mark as monitored so ToResource() will use this edition
+                Ratings = new Ratings
+                {
+                    Value = 0,
+                    Votes = 0
+                }
+            };
+
+            // Add cover image to edition (prefer super_url for highest quality)
+            if (comicVineIssue.Image != null)
+            {
+                var imageUrl = comicVineIssue.Image.SuperUrl
+                    ?? comicVineIssue.Image.OriginalUrl
+                    ?? comicVineIssue.Image.ScreenLargeUrl
+                    ?? comicVineIssue.Image.MediumUrl;
+
+                if (!string.IsNullOrWhiteSpace(imageUrl))
+                {
+                    edition.Images.Add(new MediaCover
+                    {
+                        CoverType = MediaCoverTypes.Cover,
+                        Url = imageUrl,
+                        RemoteUrl = imageUrl
+                    });
+                }
+            }
+
+            // Create book with edition
+            var book = new Book
+            {
+                Title = title,
+                ComicVineIssueId = comicVineIssue.Id.ToString(),
+                ForeignBookId = comicVineIssue.Id.ToString(),  // Use ComicVine ID as foreign ID
+                TitleSlug = title.ToLower().Replace(" ", "-").Replace("'", "").Replace("#", ""),
+                Ratings = edition.Ratings,
+                Editions = new List<Edition> { edition }
+            };
+
+            // Parse release date (prefer cover_date over store_date)
+            var releaseDate = comicVineIssue.CoverDate ?? comicVineIssue.StoreDate;
+            if (!string.IsNullOrWhiteSpace(releaseDate) && DateTime.TryParse(releaseDate, out var parsedDate))
+            {
+                book.ReleaseDate = parsedDate;
+            }
+
+            return book;
         }
     }
 }

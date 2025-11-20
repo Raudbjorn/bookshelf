@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Books
         public string HardcoverAuthorId { get; set; }
         public string OpenLibraryAuthorId { get; set; }
         public string GoogleBooksAuthorId { get; set; }
+        public string ComicVinePersonId { get; set; }
         public string TitleSlug { get; set; }
         public string Name { get; set; }
         public string SortName { get; set; }
@@ -49,6 +50,7 @@ namespace NzbDrone.Core.Books
             HardcoverAuthorId = other.HardcoverAuthorId;
             OpenLibraryAuthorId = other.OpenLibraryAuthorId;
             GoogleBooksAuthorId = other.GoogleBooksAuthorId;
+            ComicVinePersonId = other.ComicVinePersonId;
             TitleSlug = other.TitleSlug;
             Name = other.Name;
             NameLastFirst = other.NameLastFirst;

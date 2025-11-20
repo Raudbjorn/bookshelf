@@ -17,6 +17,7 @@ namespace Readarr.Api.V1.Search
         public string HardcoverId { get; set; }
         public string OpenLibraryId { get; set; }
         public string GoogleBooksId { get; set; }
+        public string ComicVineId { get; set; }
         public string GoodreadsId { get; set; }
         public List<string> MatchedProviders { get; set; }
         public decimal ConfidenceScore { get; set; }
@@ -29,6 +30,7 @@ namespace Readarr.Api.V1.Search
         public string HardcoverId { get; set; }
         public string OpenLibraryId { get; set; }
         public string GoogleBooksId { get; set; }
+        public string ComicVineId { get; set; }
         public string GoodreadsId { get; set; }
         public List<string> MatchedProviders { get; set; }
         public decimal ConfidenceScore { get; set; }
