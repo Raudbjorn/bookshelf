@@ -153,10 +153,10 @@ class AddNewAuthorSearchResult extends Component {
                 }
 
                 {
-                  links && links.length > 0 && links[0].url ?
+                  links?.[0]?.url ?
                     <Link
                       className={styles.mbLink}
-                      to={`${links[0].url}`}
+                      to={`${links?.[0]?.url}`}
                       onPress={this.onMBLinkPress}
                     >
                       <Icon
