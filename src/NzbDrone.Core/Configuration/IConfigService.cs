@@ -80,10 +80,13 @@ namespace NzbDrone.Core.Configuration
         bool OpenLibraryEnabled { get; set; }
         bool GoogleBooksEnabled { get; set; }
         string GoogleBooksApiKey { get; set; }
+        bool ComicVineEnabled { get; set; }
+        string ComicVineApiKey { get; set; }
 
         //Metadata Provider Caching
         int GoogleBooksCacheTtlHours { get; set; }
         int OpenLibraryCacheTtlHours { get; set; }
+        int ComicVineCacheTtlHours { get; set; }
 
         //Forms Auth
         string RijndaelPassphrase { get; }

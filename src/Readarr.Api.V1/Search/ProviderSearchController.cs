@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using NLog;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MetadataSource.BookInfo;
+using NzbDrone.Core.MetadataSource.ComicVine;
 using NzbDrone.Core.MetadataSource.GoogleBooks;
 using NzbDrone.Core.MetadataSource.Hardcover;
 using NzbDrone.Core.MetadataSource.OpenLibrary;
@@ -21,6 +23,7 @@ namespace Readarr.Api.V1.Search
         private readonly IHardcoverSearchClient _hardcoverSearchClient;
         private readonly IOpenLibrarySearchClient _openLibrarySearchClient;
         private readonly IGoogleBooksSearchClient _googleBooksSearchClient;
+        private readonly IComicVineSearchClient _comicVineSearchClient;
         private readonly IBookReconciliationService _reconciliationService;
         private readonly IBuildFileNames _fileNameBuilder;
         private readonly IMapCoversToLocal _coverMapper;
@@ -30,6 +33,7 @@ namespace Readarr.Api.V1.Search
             IHardcoverSearchClient hardcoverSearchClient,
             IOpenLibrarySearchClient openLibrarySearchClient,
             IGoogleBooksSearchClient googleBooksSearchClient,
+            IComicVineSearchClient comicVineSearchClient,
             IBookReconciliationService reconciliationService,
             IBuildFileNames fileNameBuilder,
             IMapCoversToLocal coverMapper,
@@ -38,6 +42,7 @@ namespace Readarr.Api.V1.Search
             _hardcoverSearchClient = hardcoverSearchClient;
             _openLibrarySearchClient = openLibrarySearchClient;
             _googleBooksSearchClient = googleBooksSearchClient;
+            _comicVineSearchClient = comicVineSearchClient;
             _reconciliationService = reconciliationService;
             _fileNameBuilder = fileNameBuilder;
             _coverMapper = coverMapper;
@@ -110,8 +115,30 @@ namespace Readarr.Api.V1.Search
             return MapToResource(results, "googlebooks").ToList();
         }
 
+        [HttpGet("comicvine")]
+        public object SearchComicVine([FromQuery] string term)
+        {
+            _logger.Info($"[ProviderSearch] ComicVine search requested for: '{term}'");
+
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return new List<SearchResource>();
+            }
+
+            var results = _comicVineSearchClient?.Search(term);
+
+            if (results == null || results.Count == 0)
+            {
+                _logger.Info($"[ProviderSearch] ComicVine returned no results for: '{term}'");
+                return new List<SearchResource>();
+            }
+
+            _logger.Info($"[ProviderSearch] ComicVine returned {results.Count} results for: '{term}'");
+            return MapToResource(results, "comicvine").ToList();
+        }
+
         [HttpGet]
-        public object SearchAll([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks")
+        public object SearchAll([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks,comicvine")
         {
             _logger.Info($"[ProviderSearch] Multi-provider search requested for: '{term}' (providers: {providers})");
 
@@ -122,7 +149,8 @@ namespace Readarr.Api.V1.Search
                     Query = term,
                     Hardcover = new List<SearchResource>(),
                     OpenLibrary = new List<SearchResource>(),
-                    GoogleBooks = new List<SearchResource>()
+                    GoogleBooks = new List<SearchResource>(),
+                    ComicVine = new List<SearchResource>()
                 };
             }
 
@@ -132,7 +160,8 @@ namespace Readarr.Api.V1.Search
                 Query = term,
                 Hardcover = new List<SearchResource>(),
                 OpenLibrary = new List<SearchResource>(),
-                GoogleBooks = new List<SearchResource>()
+                GoogleBooks = new List<SearchResource>(),
+                ComicVine = new List<SearchResource>()
             };
 
             // Search each requested provider
@@ -166,14 +195,24 @@ namespace Readarr.Api.V1.Search
                 }
             }
 
-            var totalResults = response.Hardcover.Count + response.OpenLibrary.Count + response.GoogleBooks.Count;
+            if (providerList.Contains("comicvine"))
+            {
+                var comicVineResults = _comicVineSearchClient?.Search(term);
+                if (comicVineResults != null && comicVineResults.Count > 0)
+                {
+                    response.ComicVine = MapToResource(comicVineResults, "comicvine").ToList();
+                    _logger.Info($"[ProviderSearch] ComicVine: {response.ComicVine.Count} results");
+                }
+            }
+
+            var totalResults = response.Hardcover.Count + response.OpenLibrary.Count + response.GoogleBooks.Count + response.ComicVine.Count;
             _logger.Info($"[ProviderSearch] Multi-provider search complete: {totalResults} total results");
 
             return response;
         }
 
         [HttpGet("reconcile")]
-        public object SearchReconciled([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks")
+        public object SearchReconciled([FromQuery] string term, [FromQuery] string providers = "hardcover,openlibrary,googlebooks,comicvine")
         {
             _logger.Info($"[ProviderSearch] Reconciled search requested for: '{term}' (providers: {providers})");
 
@@ -193,9 +232,11 @@ namespace Readarr.Api.V1.Search
             var hardcoverBooks = new List<Book>();
             var openLibraryBooks = new List<Book>();
             var googleBooksBooks = new List<Book>();
+            var comicVineBooks = new List<Book>();
             var hardcoverAuthors = new List<NzbDrone.Core.Books.Author>();
             var openLibraryAuthors = new List<NzbDrone.Core.Books.Author>();
             var googleBooksAuthors = new List<NzbDrone.Core.Books.Author>();
+            var comicVineAuthors = new List<NzbDrone.Core.Books.Author>();
 
             if (providerList.Contains("hardcover"))
             {
@@ -268,9 +309,30 @@ namespace Readarr.Api.V1.Search
                 }
             }
 
+            if (providerList.Contains("comicvine"))
+            {
+                var results = _comicVineSearchClient?.Search(term);
+                if (results != null)
+                {
+                    foreach (var result in results)
+                    {
+                        if (result is NzbDrone.Core.MetadataSource.ComicVine.ComicVineIssueResult comicVineIssue)
+                        {
+                            var book = ConvertComicVineIssueToDomain(comicVineIssue);
+                            if (book != null)
+                            {
+                                comicVineBooks.Add(book);
+                            }
+                        }
+                    }
+
+                    _logger.Info($"[Reconcile] ComicVine: {comicVineBooks.Count} books, {comicVineAuthors.Count} authors");
+                }
+            }
+
             // Reconcile books and authors
-            var reconciledBooks = _reconciliationService.ReconcileBooks(hardcoverBooks, openLibraryBooks, googleBooksBooks);
-            var reconciledAuthors = _reconciliationService.ReconcileAuthors(hardcoverAuthors, openLibraryAuthors, googleBooksAuthors);
+            var reconciledBooks = _reconciliationService.ReconcileBooks(hardcoverBooks, openLibraryBooks, googleBooksBooks, comicVineBooks);
+            var reconciledAuthors = _reconciliationService.ReconcileAuthors(hardcoverAuthors, openLibraryAuthors, googleBooksAuthors, comicVineAuthors);
 
             _logger.Info($"[Reconcile] Reconciliation complete: {reconciledBooks.Count} unique books, {reconciledAuthors.Count} unique authors");
 
@@ -284,6 +346,7 @@ namespace Readarr.Api.V1.Search
                     HardcoverId = rb.HardcoverId,
                     OpenLibraryId = rb.OpenLibraryId,
                     GoogleBooksId = rb.GoogleBooksId,
+                    ComicVineId = rb.ComicVineId,
                     GoodreadsId = rb.GoodreadsId,
                     MatchedProviders = rb.MatchedProviders,
                     ConfidenceScore = rb.ConfidenceScore,
@@ -295,6 +358,7 @@ namespace Readarr.Api.V1.Search
                     HardcoverId = ra.HardcoverId,
                     OpenLibraryId = ra.OpenLibraryId,
                     GoogleBooksId = ra.GoogleBooksId,
+                    ComicVineId = ra.ComicVineId,
                     GoodreadsId = ra.GoodreadsId,
                     MatchedProviders = ra.MatchedProviders,
                     ConfidenceScore = ra.ConfidenceScore,
@@ -369,24 +433,57 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = googleBookItem.VolumeInfo?.Title ?? "Unknown",
+                        TitleSlug = GenerateTitleSlug(googleBookItem.VolumeInfo?.Title),
+                        ForeignBookId = $"googlebooks:{googleBookItem.Id}",
                         Overview = googleBookItem.VolumeInfo?.Description,
                         PageCount = googleBookItem.VolumeInfo?.PageCount ?? 0,
+                        Monitored = false,
+                        AnyEditionOk = false,
                         Ratings = new Ratings
                         {
                             Value = (decimal)(googleBookItem.VolumeInfo?.AverageRating ?? 0),
                             Votes = googleBookItem.VolumeInfo?.RatingsCount ?? 0
                         },
-                        Images = new List<MediaCover>()
+                        Images = new List<MediaCover>(),
+                        Grabbed = false
                     };
 
-                    // Add author info if available
-                    if (googleBookItem.VolumeInfo?.Authors != null && googleBookItem.VolumeInfo.Authors.Any())
+                    // Add author info (always set to avoid frontend crashes)
+                    var authorName = (googleBookItem.VolumeInfo?.Authors != null && googleBookItem.VolumeInfo.Authors.Any())
+                        ? string.Join(", ", googleBookItem.VolumeInfo.Authors)
+                        : "Unknown";
+
+                    bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
-                        bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
+                        AuthorName = authorName,
+                        TitleSlug = GenerateTitleSlug(authorName),
+                        Status = AuthorStatusType.Continuing,
+                        Monitored = false,
+                        MonitorNewItems = NewItemMonitorTypes.All,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>(),
+                        Ratings = new Ratings { Votes = 0, Value = 0 }
+                    };
+
+                    // Add edition with Google Books link
+                    var edition = new Readarr.Api.V1.Books.EditionResource
+                    {
+                        Title = googleBookItem.VolumeInfo?.Title,
+                        ForeignEditionId = $"googlebooks:{googleBookItem.Id}",
+                        Monitored = false,
+                        ManualAdd = false,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>
                         {
-                            AuthorName = string.Join(", ", googleBookItem.VolumeInfo.Authors)
-                        };
-                    }
+                            new Links
+                            {
+                                Url = $"https://books.google.com/books?id={googleBookItem.Id}",
+                                Name = "Google Books"
+                            }
+                        }
+                    };
+
+                    bookResource.Editions = new List<Readarr.Api.V1.Books.EditionResource> { edition };
 
                     // Add cover image if available
                     if (!string.IsNullOrWhiteSpace(googleBookItem.VolumeInfo?.ImageLinks?.Thumbnail))
@@ -409,26 +506,59 @@ namespace Readarr.Api.V1.Search
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
                         Title = openLibraryDoc.Title ?? "Unknown",
+                        TitleSlug = GenerateTitleSlug(openLibraryDoc.Title),
+                        ForeignBookId = $"openlibrary:{openLibraryDoc.Key}",
                         Overview = openLibraryDoc.Subject != null && openLibraryDoc.Subject.Any()
                             ? string.Join(", ", openLibraryDoc.Subject.Take(5))
                             : null,
                         PageCount = openLibraryDoc.NumberOfPagesMedian ?? 0,
+                        Monitored = false,
+                        AnyEditionOk = false,
                         Ratings = new Ratings
                         {
                             Value = (decimal)(openLibraryDoc.RatingsAverage ?? 0),
                             Votes = openLibraryDoc.RatingsCount ?? 0
                         },
-                        Images = new List<MediaCover>()
+                        Images = new List<MediaCover>(),
+                        Grabbed = false
                     };
 
-                    // Add author info if available
-                    if (openLibraryDoc.AuthorName != null && openLibraryDoc.AuthorName.Any())
+                    // Add author info (always set to avoid frontend crashes)
+                    var authorName = (openLibraryDoc.AuthorName != null && openLibraryDoc.AuthorName.Any())
+                        ? string.Join(", ", openLibraryDoc.AuthorName)
+                        : "Unknown";
+
+                    bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
-                        bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
+                        AuthorName = authorName,
+                        TitleSlug = GenerateTitleSlug(authorName),
+                        Status = AuthorStatusType.Continuing,
+                        Monitored = false,
+                        MonitorNewItems = NewItemMonitorTypes.All,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>(),
+                        Ratings = new Ratings { Votes = 0, Value = 0 }
+                    };
+
+                    // Add edition with Open Library link
+                    var edition = new Readarr.Api.V1.Books.EditionResource
+                    {
+                        Title = openLibraryDoc.Title,
+                        ForeignEditionId = $"openlibrary:{openLibraryDoc.Key}",
+                        Monitored = false,
+                        ManualAdd = false,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>
                         {
-                            AuthorName = string.Join(", ", openLibraryDoc.AuthorName)
-                        };
-                    }
+                            new Links
+                            {
+                                Url = $"https://openlibrary.org{openLibraryDoc.Key}",
+                                Name = "Open Library"
+                            }
+                        }
+                    };
+
+                    bookResource.Editions = new List<Readarr.Api.V1.Books.EditionResource> { edition };
 
                     // Add cover image if available
                     if (openLibraryDoc.CoverId != null && openLibraryDoc.CoverId > 0)
@@ -445,6 +575,240 @@ namespace Readarr.Api.V1.Search
 
                     resource.Book = bookResource;
                     resource.ForeignId = $"openlibrary:{openLibraryDoc.Key}";
+                }
+                else if (result is NzbDrone.Core.MetadataSource.Hardcover.HardcoverBookResult hardcoverBook)
+                {
+                    // Handle raw Hardcover book results
+                    var bookResource = new Readarr.Api.V1.Books.BookResource
+                    {
+                        Title = hardcoverBook.Title ?? "Unknown",
+                        TitleSlug = GenerateTitleSlug(hardcoverBook.Title),
+                        ForeignBookId = $"hardcover:{hardcoverBook.Id}",
+                        Overview = hardcoverBook.Description,
+                        PageCount = hardcoverBook.Pages,
+                        Monitored = false,
+                        AnyEditionOk = false,
+                        Ratings = new Ratings
+                        {
+                            Value = (decimal)hardcoverBook.Rating,
+                            Votes = 0
+                        },
+                        Images = new List<MediaCover>(),
+                        Grabbed = false
+                    };
+
+                    // Add author info (always set to avoid frontend crashes)
+                    var authorName = (hardcoverBook.AuthorNames != null && hardcoverBook.AuthorNames.Any())
+                        ? string.Join(", ", hardcoverBook.AuthorNames)
+                        : "Unknown";
+
+                    bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
+                    {
+                        AuthorName = authorName,
+                        TitleSlug = GenerateTitleSlug(authorName),
+                        Status = AuthorStatusType.Continuing,
+                        Monitored = false,
+                        MonitorNewItems = NewItemMonitorTypes.All,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>(),
+                        Ratings = new Ratings { Votes = 0, Value = 0 }
+                    };
+
+                    // Add edition with Hardcover link
+                    var edition = new Readarr.Api.V1.Books.EditionResource
+                    {
+                        Title = hardcoverBook.Title,
+                        ForeignEditionId = $"hardcover:{hardcoverBook.Id}",
+                        Monitored = false,
+                        ManualAdd = false,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>
+                        {
+                            new Links
+                            {
+                                Url = $"https://hardcover.app/books/{hardcoverBook.Id}",
+                                Name = "Hardcover"
+                            }
+                        }
+                    };
+
+                    bookResource.Editions = new List<Readarr.Api.V1.Books.EditionResource> { edition };
+
+                    // Add cover image if available
+                    if (!string.IsNullOrWhiteSpace(hardcoverBook.ImageUrl))
+                    {
+                        bookResource.RemoteCover = hardcoverBook.ImageUrl;
+                        bookResource.Images.Add(new MediaCover
+                        {
+                            CoverType = MediaCoverTypes.Cover,
+                            Url = hardcoverBook.ImageUrl,
+                            RemoteUrl = hardcoverBook.ImageUrl
+                        });
+                    }
+
+                    resource.Book = bookResource;
+                    resource.ForeignId = $"hardcover:{hardcoverBook.Id}";
+                }
+                else if (result is NzbDrone.Core.MetadataSource.Hardcover.HardcoverAuthorResult hardcoverAuthor)
+                {
+                    // Handle raw Hardcover author results
+                    var authorResource = new Readarr.Api.V1.Author.AuthorResource
+                    {
+                        AuthorName = hardcoverAuthor.Name ?? "Unknown",
+                        TitleSlug = GenerateTitleSlug(hardcoverAuthor.Slug ?? hardcoverAuthor.Name),
+                        ForeignAuthorId = $"hardcover:{hardcoverAuthor.Id}",
+                        Overview = hardcoverAuthor.Bio,
+                        Status = AuthorStatusType.Continuing,
+                        Monitored = false,
+                        MonitorNewItems = NewItemMonitorTypes.All,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>
+                        {
+                            new Links
+                            {
+                                Url = $"https://hardcover.app/authors/{hardcoverAuthor.Slug ?? hardcoverAuthor.Id.ToString()}",
+                                Name = "Hardcover"
+                            }
+                        },
+                        Ratings = new Ratings { Votes = 0, Value = 0 }
+                    };
+
+                    // Add author image if available
+                    if (!string.IsNullOrWhiteSpace(hardcoverAuthor.ImageUrl))
+                    {
+                        authorResource.RemotePoster = hardcoverAuthor.ImageUrl;
+                        authorResource.Images.Add(new MediaCover
+                        {
+                            CoverType = MediaCoverTypes.Poster,
+                            Url = hardcoverAuthor.ImageUrl,
+                            RemoteUrl = hardcoverAuthor.ImageUrl
+                        });
+                    }
+
+                    resource.Author = authorResource;
+                    resource.ForeignId = $"hardcover:{hardcoverAuthor.Id}";
+                }
+                else if (result is NzbDrone.Core.MetadataSource.Hardcover.HardcoverSeriesResult hardcoverSeries)
+                {
+                    // Handle raw Hardcover series results
+                    // Note: Series don't map directly to Book or Author, so we'll treat them as books for now
+                    var bookResource = new Readarr.Api.V1.Books.BookResource
+                    {
+                        Title = hardcoverSeries.Name ?? "Unknown",
+                        TitleSlug = GenerateTitleSlug(hardcoverSeries.Slug ?? hardcoverSeries.Name),
+                        ForeignBookId = $"hardcover:series:{hardcoverSeries.Id}",
+                        SeriesTitle = hardcoverSeries.Name,
+                        Overview = hardcoverSeries.Description,
+                        PageCount = 0,
+                        Monitored = false,
+                        AnyEditionOk = false,
+                        Ratings = new Ratings { Votes = 0, Value = 0 },
+                        Images = new List<MediaCover>(),
+                        Grabbed = false
+                    };
+
+                    // Add author info (always set to avoid frontend crashes)
+                    var seriesAuthorName = !string.IsNullOrWhiteSpace(hardcoverSeries.AuthorName)
+                        ? hardcoverSeries.AuthorName
+                        : "Unknown";
+
+                    bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
+                    {
+                        AuthorName = seriesAuthorName,
+                        TitleSlug = GenerateTitleSlug(seriesAuthorName),
+                        Status = AuthorStatusType.Continuing,
+                        Monitored = false,
+                        MonitorNewItems = NewItemMonitorTypes.All,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>(),
+                        Ratings = new Ratings { Votes = 0, Value = 0 }
+                    };
+
+                    resource.Book = bookResource;
+                    resource.ForeignId = $"hardcover:series:{hardcoverSeries.Id}";
+                }
+                else if (result is NzbDrone.Core.MetadataSource.ComicVine.ComicVineIssueResult comicVineIssue)
+                {
+                    // Handle raw ComicVine issue results - map to books (comics)
+                    var volumeName = comicVineIssue.Volume?.Name ?? "Unknown Volume";
+                    var issueNumber = !string.IsNullOrWhiteSpace(comicVineIssue.IssueNumber) ? $" #{comicVineIssue.IssueNumber}" : "";
+                    var issueName = !string.IsNullOrWhiteSpace(comicVineIssue.Name) ? $": {comicVineIssue.Name}" : "";
+                    var title = $"{volumeName}{issueNumber}{issueName}";
+
+                    var bookResource = new Readarr.Api.V1.Books.BookResource
+                    {
+                        Title = title,
+                        TitleSlug = GenerateTitleSlug(title),
+                        ForeignBookId = $"comicvine:{comicVineIssue.Id}",
+                        Overview = comicVineIssue.Description,
+                        PageCount = 0,
+                        Monitored = false,
+                        AnyEditionOk = false,
+                        Ratings = new Ratings { Votes = 0, Value = 0 },
+                        Images = new List<MediaCover>(),
+                        Grabbed = false
+                    };
+
+                    // For comics, use the series/volume name as the "author" since individual writers change frequently
+                    // and ComicVine search API doesn't return person_credits without fetching full issue details
+                    var authorName = volumeName;
+
+                    bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
+                    {
+                        AuthorName = authorName,
+                        TitleSlug = GenerateTitleSlug(authorName),
+                        Status = AuthorStatusType.Continuing,
+                        Monitored = false,
+                        MonitorNewItems = NewItemMonitorTypes.All,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>(),
+                        Ratings = new Ratings { Votes = 0, Value = 0 }
+                    };
+
+                    // Add edition with ComicVine link
+                    var edition = new Readarr.Api.V1.Books.EditionResource
+                    {
+                        Title = title,
+                        ForeignEditionId = $"comicvine:{comicVineIssue.Id}",
+                        Monitored = false,
+                        ManualAdd = false,
+                        Images = new List<MediaCover>(),
+                        Links = new List<Links>
+                        {
+                            new Links
+                            {
+                                Url = $"https://comicvine.gamespot.com/issue/4000-{comicVineIssue.Id}",
+                                Name = "ComicVine"
+                            }
+                        }
+                    };
+
+                    bookResource.Editions = new List<Readarr.Api.V1.Books.EditionResource> { edition };
+
+                    // Add cover image if available (use medium or screen size)
+                    var coverUrl = comicVineIssue.Image?.MediumUrl ?? comicVineIssue.Image?.ScreenUrl;
+                    if (!string.IsNullOrWhiteSpace(coverUrl))
+                    {
+                        bookResource.RemoteCover = coverUrl;
+                        bookResource.Images.Add(new MediaCover
+                        {
+                            CoverType = MediaCoverTypes.Cover,
+                            Url = coverUrl,
+                            RemoteUrl = coverUrl
+                        });
+                    }
+
+                    // Add release date if available
+                    if (!string.IsNullOrWhiteSpace(comicVineIssue.StoreDate))
+                    {
+                        if (global::System.DateTime.TryParse(comicVineIssue.StoreDate, out var storeDate))
+                        {
+                            bookResource.ReleaseDate = storeDate;
+                        }
+                    }
+
+                    resource.Book = bookResource;
+                    resource.ForeignId = $"comicvine:{comicVineIssue.Id}";
                 }
 
                 yield return resource;
@@ -466,6 +830,7 @@ namespace Readarr.Api.V1.Search
                 Overview = googleBookItem.VolumeInfo?.Description,
                 PageCount = googleBookItem.VolumeInfo?.PageCount ?? 0,
                 GoogleBooksEditionId = googleBookItem.Id,
+                Monitored = true,  // Mark as monitored so ToResource() will use this edition
                 Ratings = new Ratings
                 {
                     Value = (decimal)(googleBookItem.VolumeInfo?.AverageRating ?? 0),
@@ -489,6 +854,9 @@ namespace Readarr.Api.V1.Search
             {
                 Title = googleBookItem.VolumeInfo?.Title ?? "Unknown",
                 GoogleBooksId = googleBookItem.Id,
+                ForeignBookId = googleBookItem.Id,  // Use GoogleBooks ID as foreign ID
+                TitleSlug = GenerateTitleSlug(googleBookItem.VolumeInfo?.Title),
+                Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
 
@@ -511,6 +879,7 @@ namespace Readarr.Api.V1.Search
                     : null,
                 PageCount = openLibraryDoc.NumberOfPagesMedian ?? 0,
                 OpenLibraryEditionId = openLibraryDoc.Key,
+                Monitored = true,  // Mark as monitored so ToResource() will use this edition
                 Ratings = new Ratings
                 {
                     Value = (decimal)(openLibraryDoc.RatingsAverage ?? 0),
@@ -535,6 +904,9 @@ namespace Readarr.Api.V1.Search
             {
                 Title = openLibraryDoc.Title ?? "Unknown",
                 OpenLibraryWorkId = openLibraryDoc.Key,
+                ForeignBookId = openLibraryDoc.Key,  // Use OpenLibrary ID as foreign ID
+                TitleSlug = GenerateTitleSlug(openLibraryDoc.Title),
+                Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
 
@@ -555,6 +927,7 @@ namespace Readarr.Api.V1.Search
                 Overview = hardcoverBook.Description,
                 PageCount = hardcoverBook.Pages,
                 HardcoverEditionId = hardcoverBook.Id,
+                Monitored = true,  // Mark as monitored so ToResource() will use this edition
                 Ratings = new Ratings
                 {
                     Value = (decimal)hardcoverBook.Rating,
@@ -578,6 +951,9 @@ namespace Readarr.Api.V1.Search
             {
                 Title = hardcoverBook.Title ?? "Unknown",
                 HardcoverBookId = hardcoverBook.Id,
+                ForeignBookId = hardcoverBook.Id,  // Use Hardcover ID as foreign ID
+                TitleSlug = GenerateTitleSlug(hardcoverBook.Title),
+                Ratings = edition.Ratings,
                 Editions = new List<Edition> { edition }
             };
 
@@ -610,6 +986,92 @@ namespace Readarr.Api.V1.Search
             }
 
             return author;
+        }
+
+        private Book ConvertComicVineIssueToDomain(NzbDrone.Core.MetadataSource.ComicVine.ComicVineIssueResult comicVineIssue)
+        {
+            if (comicVineIssue == null || comicVineIssue.Id == 0)
+            {
+                return null;
+            }
+
+            // Build title from volume name and issue number
+            var title = comicVineIssue.Volume?.Name ?? "Unknown";
+            if (!string.IsNullOrWhiteSpace(comicVineIssue.IssueNumber))
+            {
+                title += $" #{comicVineIssue.IssueNumber}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(comicVineIssue.Name))
+            {
+                title += $" - {comicVineIssue.Name}";
+            }
+
+            // Create edition with detailed metadata
+            var edition = new Edition
+            {
+                Title = title,
+                Overview = comicVineIssue.Description,
+                Monitored = true,  // Mark as monitored so ToResource() will use this edition
+                Ratings = new Ratings
+                {
+                    Value = 0,
+                    Votes = 0
+                }
+            };
+
+            // Add cover image to edition (prefer super_url for highest quality)
+            if (comicVineIssue.Image != null)
+            {
+                var imageUrl = comicVineIssue.Image.SuperUrl
+                    ?? comicVineIssue.Image.OriginalUrl
+                    ?? comicVineIssue.Image.ScreenLargeUrl
+                    ?? comicVineIssue.Image.MediumUrl;
+
+                if (!string.IsNullOrWhiteSpace(imageUrl))
+                {
+                    edition.Images.Add(new MediaCover
+                    {
+                        CoverType = MediaCoverTypes.Cover,
+                        Url = imageUrl,
+                        RemoteUrl = imageUrl
+                    });
+                }
+            }
+
+            // Create book with edition
+            var book = new Book
+            {
+                Title = title,
+                ComicVineIssueId = comicVineIssue.Id.ToString(),
+                ForeignBookId = comicVineIssue.Id.ToString(),  // Use ComicVine ID as foreign ID
+                TitleSlug = GenerateTitleSlug(title),
+                Ratings = edition.Ratings,
+                Editions = new List<Edition> { edition }
+            };
+
+            // Parse release date (prefer cover_date over store_date)
+            var releaseDate = comicVineIssue.CoverDate ?? comicVineIssue.StoreDate;
+            if (!string.IsNullOrWhiteSpace(releaseDate) && DateTime.TryParse(releaseDate, out var parsedDate))
+            {
+                book.ReleaseDate = parsedDate;
+            }
+
+            return book;
+        }
+
+        private string GenerateTitleSlug(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return "unknown";
+            }
+
+            return title.ToLower()
+                .Replace(" ", "-")
+                .Replace("'", "")
+                .Replace("#", "")
+                .Replace(":", "");
         }
     }
 }

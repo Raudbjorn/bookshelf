@@ -15,9 +15,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             _logger = logger;
         }
 
-        public List<ReconciledBook> ReconcileBooks(List<Book> hardcoverBooks, List<Book> openLibraryBooks, List<Book> googleBooksBooks)
+        public List<ReconciledBook> ReconcileBooks(List<Book> hardcoverBooks, List<Book> openLibraryBooks, List<Book> googleBooksBooks, List<Book> comicVineBooks)
         {
-            _logger.Debug($"[Reconciliation] Starting book reconciliation: {hardcoverBooks?.Count ?? 0} HC, {openLibraryBooks?.Count ?? 0} OL, {googleBooksBooks?.Count ?? 0} GB");
+            _logger.Debug($"[Reconciliation] Starting book reconciliation: {hardcoverBooks?.Count ?? 0} HC, {openLibraryBooks?.Count ?? 0} OL, {googleBooksBooks?.Count ?? 0} GB, {comicVineBooks?.Count ?? 0} CV");
 
             var allBooks = new List<(Book book, string provider)>();
 
@@ -34,6 +34,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (googleBooksBooks != null)
             {
                 allBooks.AddRange(googleBooksBooks.Select(b => (b, "googlebooks")));
+            }
+
+            if (comicVineBooks != null)
+            {
+                allBooks.AddRange(comicVineBooks.Select(b => (b, "comicvine")));
             }
 
             if (allBooks.Count == 0)
@@ -68,9 +73,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return reconciledBooks;
         }
 
-        public List<ReconciledAuthor> ReconcileAuthors(List<Author> hardcoverAuthors, List<Author> openLibraryAuthors, List<Author> googleBooksAuthors)
+        public List<ReconciledAuthor> ReconcileAuthors(List<Author> hardcoverAuthors, List<Author> openLibraryAuthors, List<Author> googleBooksAuthors, List<Author> comicVineAuthors)
         {
-            _logger.Debug($"[Reconciliation] Starting author reconciliation: {hardcoverAuthors?.Count ?? 0} HC, {openLibraryAuthors?.Count ?? 0} OL, {googleBooksAuthors?.Count ?? 0} GB");
+            _logger.Debug($"[Reconciliation] Starting author reconciliation: {hardcoverAuthors?.Count ?? 0} HC, {openLibraryAuthors?.Count ?? 0} OL, {googleBooksAuthors?.Count ?? 0} GB, {comicVineAuthors?.Count ?? 0} CV");
 
             var allAuthors = new List<(Author author, string provider)>();
 
@@ -87,6 +92,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (googleBooksAuthors != null)
             {
                 allAuthors.AddRange(googleBooksAuthors.Select(a => (a, "googlebooks")));
+            }
+
+            if (comicVineAuthors != null)
+            {
+                allAuthors.AddRange(comicVineAuthors.Select(a => (a, "comicvine")));
             }
 
             if (allAuthors.Count == 0)
@@ -298,6 +308,48 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                         }
                     }
                 }
+
+                // Merge edition-level metadata (critical for ToResource() which reads from editions)
+                if (matchBook.Editions != null && matchBook.Editions.Value != null && matchBook.Editions.Value.Any())
+                {
+                    var matchEdition = matchBook.Editions.Value.FirstOrDefault(e => e.Monitored);
+                    if (matchEdition != null && primaryBook.Editions != null && primaryBook.Editions.Value != null)
+                    {
+                        var primaryEdition = primaryBook.Editions.Value.FirstOrDefault(e => e.Monitored);
+                        if (primaryEdition != null)
+                        {
+                            // Merge ratings (prefer higher vote count)
+                            if (matchEdition.Ratings != null && matchEdition.Ratings.Votes > (primaryEdition.Ratings?.Votes ?? 0))
+                            {
+                                primaryEdition.Ratings = matchEdition.Ratings;
+                            }
+
+                            // Merge page count (prefer non-zero values)
+                            if (primaryEdition.PageCount == 0 && matchEdition.PageCount > 0)
+                            {
+                                primaryEdition.PageCount = matchEdition.PageCount;
+                            }
+
+                            // Merge overview (prefer longer/more detailed)
+                            if (string.IsNullOrWhiteSpace(primaryEdition.Overview) && !string.IsNullOrWhiteSpace(matchEdition.Overview))
+                            {
+                                primaryEdition.Overview = matchEdition.Overview;
+                            }
+
+                            // Merge images
+                            if (matchEdition.Images != null && matchEdition.Images.Any())
+                            {
+                                foreach (var image in matchEdition.Images)
+                                {
+                                    if (!primaryEdition.Images.Any(i => i.Url == image.Url))
+                                    {
+                                        primaryEdition.Images.Add(image);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Calculate confidence based on number of matches and match types
@@ -321,6 +373,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     break;
                 case "googlebooks":
                     reconciledBook.GoogleBooksId = book.GoogleBooksId ?? book.ForeignBookId;
+                    break;
+                case "comicvine":
+                    reconciledBook.ComicVineId = book.ComicVineIssueId ?? book.ForeignBookId;
                     break;
                 case "goodreads":
                     reconciledBook.GoodreadsId = book.ForeignBookId;
@@ -412,6 +467,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 case "googlebooks":
                     reconciledAuthor.GoogleBooksId = metadata.GoogleBooksAuthorId ?? metadata.ForeignAuthorId;
                     break;
+                case "comicvine":
+                    reconciledAuthor.ComicVineId = metadata.ComicVinePersonId ?? metadata.ForeignAuthorId;
+                    break;
                 case "goodreads":
                     reconciledAuthor.GoodreadsId = metadata.ForeignAuthorId;
                     break;
@@ -433,6 +491,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (!string.IsNullOrWhiteSpace(book.GoogleBooksId))
             {
                 return "googlebooks";
+            }
+
+            if (!string.IsNullOrWhiteSpace(book.ComicVineIssueId))
+            {
+                return "comicvine";
             }
 
             return "unknown";
@@ -459,6 +522,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             if (!string.IsNullOrWhiteSpace(metadata.GoogleBooksAuthorId))
             {
                 return "googlebooks";
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.ComicVinePersonId))
+            {
+                return "comicvine";
             }
 
             return "unknown";

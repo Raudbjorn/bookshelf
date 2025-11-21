@@ -46,6 +46,7 @@ namespace NzbDrone.Core.Validation
                     {
                         return false;
                     }
+
                     return x.IsValidUrl() && x.StartsWith("http", StringComparison.InvariantCultureIgnoreCase);
                 }).WithMessage("must be valid URL that starts with http(s)://");
         }

@@ -144,7 +144,7 @@ class AddNewBookSearchResult extends Component {
                 }
 
                 {
-                  editions ?
+                  editions?.[0]?.links?.[0]?.url ?
                     <Link
                       className={styles.mbLink}
                       to={`${editions[0].links[0].url}`}

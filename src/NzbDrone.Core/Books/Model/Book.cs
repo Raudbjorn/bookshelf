@@ -29,6 +29,7 @@ namespace NzbDrone.Core.Books
         public string HardcoverBookId { get; set; }
         public string OpenLibraryWorkId { get; set; }
         public string GoogleBooksId { get; set; }
+        public string ComicVineIssueId { get; set; }
         public string ForeignEditionId { get; set; }
         public string TitleSlug { get; set; }
         public string Title { get; set; }

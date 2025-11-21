@@ -160,7 +160,7 @@ class AddNewItem extends Component {
                         <AddNewBookSearchResultConnector
                           key={item.id}
                           isExistingBook={'id' in book && book.id !== 0}
-                          isExistingAuthor={'id' in book.author && book.author.id !== 0}
+                          isExistingAuthor={book.author && 'id' in book.author && book.author.id !== 0}
                           {...book}
                         />
                       );

@@ -17,6 +17,10 @@ const providerConfig = {
     label: 'Google Books',
     kind: kinds.WARNING
   },
+  comicvine: {
+    label: 'ComicVine',
+    kind: kinds.PRIMARY
+  },
   goodreads: {
     label: 'Goodreads',
     kind: kinds.DANGER

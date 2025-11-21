@@ -1,19 +1,17 @@
 using System.Collections.Generic;
-using Readarr.Api.V1.Author;
-using Readarr.Api.V1.Books;
+using NzbDrone.Core.Books;
 
-namespace Readarr.Api.V1.Search
+namespace NzbDrone.Core.MetadataSource.BookInfo
 {
-    public class ReconciledSearchResource
+    public interface IBookReconciliationService
     {
-        public string Query { get; set; }
-        public List<ReconciledBookResource> Books { get; set; }
-        public List<ReconciledAuthorResource> Authors { get; set; }
+        List<ReconciledBook> ReconcileBooks(List<Book> hardcoverBooks, List<Book> openLibraryBooks, List<Book> googleBooksBooks, List<Book> comicVineBooks);
+        List<ReconciledAuthor> ReconcileAuthors(List<Author> hardcoverAuthors, List<Author> openLibraryAuthors, List<Author> googleBooksAuthors, List<Author> comicVineAuthors);
     }
 
-    public class ReconciledBookResource
+    public class ReconciledBook
     {
-        public BookResource Book { get; set; }
+        public Book MergedBook { get; set; }
         public string HardcoverId { get; set; }
         public string OpenLibraryId { get; set; }
         public string GoogleBooksId { get; set; }
@@ -24,9 +22,9 @@ namespace Readarr.Api.V1.Search
         public string PrimarySource { get; set; }
     }
 
-    public class ReconciledAuthorResource
+    public class ReconciledAuthor
     {
-        public AuthorResource Author { get; set; }
+        public Author MergedAuthor { get; set; }
         public string HardcoverId { get; set; }
         public string OpenLibraryId { get; set; }
         public string GoogleBooksId { get; set; }

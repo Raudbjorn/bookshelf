@@ -237,7 +237,43 @@ namespace NzbDrone.Core.MetadataSource.Hardcover
 
                 var results = new List<object>();
 
-                // Parse authors and sort by books count
+                // Parse books first (most specific results)
+                if (data.TryGetProperty("books", out var booksData) &&
+                    booksData.TryGetProperty("results", out var bookResults) &&
+                    bookResults.TryGetProperty("hits", out var bookHits))
+                {
+                    foreach (var hit in bookHits.EnumerateArray())
+                    {
+                        if (hit.TryGetProperty("document", out var doc))
+                        {
+                            var book = ParseBook(doc);
+                            if (book != null)
+                            {
+                                results.Add(book);
+                            }
+                        }
+                    }
+                }
+
+                // Parse series second (collections of books)
+                if (data.TryGetProperty("series", out var seriesData) &&
+                    seriesData.TryGetProperty("results", out var seriesResults) &&
+                    seriesResults.TryGetProperty("hits", out var seriesHits))
+                {
+                    foreach (var hit in seriesHits.EnumerateArray())
+                    {
+                        if (hit.TryGetProperty("document", out var doc))
+                        {
+                            var series = ParseSeries(doc);
+                            if (series != null)
+                            {
+                                results.Add(series);
+                            }
+                        }
+                    }
+                }
+
+                // Parse authors last and sort by books count (general results)
                 var authors = new List<HardcoverAuthorResult>();
                 if (data.TryGetProperty("authors", out var authorsData) &&
                     authorsData.TryGetProperty("results", out var authorResults) &&
@@ -261,42 +297,6 @@ namespace NzbDrone.Core.MetadataSource.Hardcover
                 foreach (var author in sortedAuthors)
                 {
                     results.Add(author);
-                }
-
-                // Parse books
-                if (data.TryGetProperty("books", out var booksData) &&
-                    booksData.TryGetProperty("results", out var bookResults) &&
-                    bookResults.TryGetProperty("hits", out var bookHits))
-                {
-                    foreach (var hit in bookHits.EnumerateArray())
-                    {
-                        if (hit.TryGetProperty("document", out var doc))
-                        {
-                            var book = ParseBook(doc);
-                            if (book != null)
-                            {
-                                results.Add(book);
-                            }
-                        }
-                    }
-                }
-
-                // Parse series
-                if (data.TryGetProperty("series", out var seriesData) &&
-                    seriesData.TryGetProperty("results", out var seriesResults) &&
-                    seriesResults.TryGetProperty("hits", out var seriesHits))
-                {
-                    foreach (var hit in seriesHits.EnumerateArray())
-                    {
-                        if (hit.TryGetProperty("document", out var doc))
-                        {
-                            var series = ParseSeries(doc);
-                            if (series != null)
-                            {
-                                results.Add(series);
-                            }
-                        }
-                    }
                 }
 
                 return results;
