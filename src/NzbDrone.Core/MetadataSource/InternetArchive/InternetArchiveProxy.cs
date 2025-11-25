@@ -19,6 +19,9 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
         private const string SearchUrl = "https://archive.org/advancedsearch.php";
         private const string MetadataUrl = "https://archive.org/metadata";
         private const int MaxSearchResults = 25;
+        private const string UserAgent = "Bookshelf/1.0";
+
+        private static readonly char[] LuceneSpecialChars = { '\\', '+', '-', '&', '|', '!', '(', ')', '{', '}', '[', ']', '^', '"', '~', '*', '?', ':', '/' };
 
         private readonly IHttpClient _httpClient;
         private readonly ICachedHttpResponseService _cachedHttpClient;
@@ -58,8 +61,8 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
 
             try
             {
-                var cleanIsbn = isbn.Replace("-", "").Replace(" ", "");
-                var query = $"isbn:{cleanIsbn}";
+                var cleanIsbn = NormalizeIsbn(isbn);
+                var query = BuildIsbnQuery(cleanIsbn);
                 var searchResults = ExecuteSearch(query);
 
                 return searchResults.Select(MapSearchDocToBook).ToList();
@@ -77,7 +80,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
 
             try
             {
-                var query = $"asin:{asin}";
+                var query = BuildAsinQuery(asin);
                 var searchResults = ExecuteSearch(query);
 
                 return searchResults.Select(MapSearchDocToBook).ToList();
@@ -128,7 +131,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
             var url = $"{SearchUrl}?q={HttpUtility.UrlEncode(query)}&{fieldsParam}&output=json&rows={MaxSearchResults}";
 
             var httpRequest = new HttpRequestBuilder(url)
-                .SetHeader("User-Agent", "Bookshelf/1.0")
+                .SetHeader("User-Agent", UserAgent)
                 .Build();
 
             httpRequest.SuppressHttpError = true;
@@ -158,7 +161,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
             var url = $"{MetadataUrl}/{identifier}";
 
             var httpRequest = new HttpRequestBuilder(url)
-                .SetHeader("User-Agent", "Bookshelf/1.0")
+                .SetHeader("User-Agent", UserAgent)
                 .Build();
 
             httpRequest.SuppressHttpError = true;
@@ -180,7 +183,57 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 throw new InternetArchiveException($"Metadata retrieval failed with status code: {response.StatusCode}");
             }
 
+            if (response.Resource == null)
+            {
+                throw new InternetArchiveException($"Metadata response was null for identifier: {identifier}");
+            }
+
             return response.Resource;
+        }
+
+        private string NormalizeIsbn(string isbn)
+        {
+            if (string.IsNullOrWhiteSpace(isbn))
+            {
+                return isbn;
+            }
+
+            // Remove hyphens, spaces, and other common separators
+            return isbn.Replace("-", "").Replace(" ", "").Replace(".", "").Trim();
+        }
+
+        private string BuildIsbnQuery(string isbn)
+        {
+            var queryParts = new List<string>
+            {
+                $"isbn:{isbn}",
+                "mediatype:texts",
+                "(collection:printdisabled OR collection:inlibrary OR collection:books OR collection:opensource)"
+            };
+
+            return string.Join(" AND ", queryParts);
+        }
+
+        private string BuildAsinQuery(string asin)
+        {
+            var queryParts = new List<string>
+            {
+                $"asin:{asin}",
+                "mediatype:texts",
+                "(collection:printdisabled OR collection:inlibrary OR collection:books OR collection:opensource)"
+            };
+
+            return string.Join(" AND ", queryParts);
+        }
+
+        private string BuildItemUrl(string identifier)
+        {
+            return $"https://archive.org/details/{identifier}";
+        }
+
+        private string BuildCoverUrl(string identifier)
+        {
+            return $"https://archive.org/services/img/{identifier}";
         }
 
         private string BuildLuceneQuery(string title, string author)
@@ -218,15 +271,20 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
             }
 
             // Escape special Lucene characters
-            var specialChars = new[] { '+', '-', '&', '|', '!', '(', ')', '{', '}', '[', ']', '^', '"', '~', '*', '?', ':', '\\', '/' };
-            var result = input;
+            // Backslash must be escaped first to avoid double-escaping
+            var result = new System.Text.StringBuilder(input.Length * 2);
 
-            foreach (var ch in specialChars)
+            foreach (var ch in input)
             {
-                result = result.Replace(ch.ToString(), "\\" + ch);
+                if (Array.IndexOf(LuceneSpecialChars, ch) >= 0)
+                {
+                    result.Append('\\');
+                }
+
+                result.Append(ch);
             }
 
-            return result;
+            return result.ToString();
         }
 
         private Book MapSearchDocToBook(IASearchDoc doc)
@@ -241,15 +299,15 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 {
                     new Links
                     {
-                        Url = $"https://archive.org/details/{doc.Identifier}",
+                        Url = BuildItemUrl(doc.Identifier),
                         Name = "Internet Archive"
                     }
                 },
                 Genres = doc.Subject ?? new List<string>(),
                 Ratings = new Ratings
                 {
-                    Value = doc.Avg_rating.HasValue ? (decimal)doc.Avg_rating.Value : 0m,
-                    Votes = doc.Num_reviews ?? 0
+                    Value = doc.AvgRating.HasValue ? (decimal)doc.AvgRating.Value : 0m,
+                    Votes = doc.NumReviews ?? 0
                 },
                 AnyEditionOk = true
             };
@@ -269,7 +327,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 {
                     new Links
                     {
-                        Url = $"https://archive.org/details/{doc.Identifier}",
+                        Url = BuildItemUrl(doc.Identifier),
                         Name = "Internet Archive"
                     }
                 }
@@ -294,15 +352,15 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 {
                     new Links
                     {
-                        Url = $"https://archive.org/details/{identifier}",
+                        Url = BuildItemUrl(identifier),
                         Name = "Internet Archive"
                     }
                 },
                 Genres = GetListValue(metadata.Subject),
                 Ratings = new Ratings
                 {
-                    Value = metadata.Avg_rating.HasValue ? (decimal)metadata.Avg_rating.Value : 0m,
-                    Votes = metadata.Num_reviews ?? 0
+                    Value = metadata.AvgRating.HasValue ? (decimal)metadata.AvgRating.Value : 0m,
+                    Votes = metadata.NumReviews ?? 0
                 },
                 AnyEditionOk = true
             };
@@ -334,7 +392,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 {
                     new Links
                     {
-                        Url = $"https://archive.org/details/{identifier}",
+                        Url = BuildItemUrl(identifier),
                         Name = "Internet Archive"
                     }
                 },
@@ -342,7 +400,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
             };
 
             // Add cover image if available
-            var coverUrl = $"https://archive.org/services/img/{identifier}";
+            var coverUrl = BuildCoverUrl(identifier);
             edition.Images.Add(new MediaCover.MediaCover
             {
                 Url = coverUrl,
@@ -383,10 +441,15 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 return "unknown";
             }
 
-            return authorName.ToLower()
+            // Trim and normalize whitespace, then convert to slug format
+            var normalized = System.Text.RegularExpressions.Regex.Replace(authorName.Trim(), @"\s+", " ");
+
+            return normalized.ToLowerInvariant()
                 .Replace(" ", "-")
                 .Replace(".", "")
-                .Replace(",", "");
+                .Replace(",", "")
+                .Replace("'", "")
+                .Replace("\"", "");
         }
 
         private DateTime? ParseDate(string dateString)
@@ -396,16 +459,25 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 return null;
             }
 
+            var trimmed = dateString.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                return null;
+            }
+
             // Internet Archive dates can be in various formats: "2020", "2020-01-01", "2020-01", etc.
-            if (DateTime.TryParse(dateString, out var result))
+            if (DateTime.TryParse(trimmed, out var result))
             {
                 return result;
             }
 
-            // Try parsing just the year
-            if (int.TryParse(dateString.Substring(0, Math.Min(4, dateString.Length)), out var year))
+            // Try parsing just the year (must have at least 4 characters)
+            if (trimmed.Length >= 4 && int.TryParse(trimmed.Substring(0, 4), out var year))
             {
-                return new DateTime(year, 1, 1);
+                if (year >= 1 && year <= 9999)
+                {
+                    return new DateTime(year, 1, 1);
+                }
             }
 
             return null;
@@ -418,12 +490,13 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 return null;
             }
 
-            // Handle both string and List<string> cases
+            // Handle string
             if (value is string str)
             {
                 return str;
             }
 
+            // Handle JsonElement
             if (value is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.String)
@@ -437,7 +510,16 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 }
             }
 
-            return value.ToString();
+            // Handle IEnumerable<string>
+            if (value is System.Collections.IEnumerable enumerable && !(value is string))
+            {
+                var firstItem = enumerable.Cast<object>().FirstOrDefault();
+                return firstItem?.ToString();
+            }
+
+            // Last resort - log warning and return null
+            _logger.Warn("Unexpected value type in GetStringValue: {0}", value.GetType().Name);
+            return null;
         }
 
         private List<string> GetListValue(object value)
@@ -447,12 +529,13 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 return new List<string>();
             }
 
-            // Handle both string and List<string> cases
+            // Handle string
             if (value is string str)
             {
                 return new List<string> { str };
             }
 
+            // Handle JsonElement
             if (value is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.String)
@@ -469,7 +552,18 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 }
             }
 
-            return new List<string> { value.ToString() };
+            // Handle IEnumerable<string>
+            if (value is System.Collections.IEnumerable enumerable && !(value is string))
+            {
+                return enumerable.Cast<object>()
+                    .Select(item => item?.ToString())
+                    .Where(s => s != null)
+                    .ToList();
+            }
+
+            // Last resort - log warning and return empty list
+            _logger.Warn("Unexpected value type in GetListValue: {0}", value.GetType().Name);
+            return new List<string>();
         }
     }
 }
