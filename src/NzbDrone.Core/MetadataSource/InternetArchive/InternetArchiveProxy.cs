@@ -106,7 +106,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
             try
             {
                 // foreignBookId for IA is in format "ia:identifier"
-                var identifier = foreignBookId.StartsWith("ia:") ? foreignBookId.Substring(3) : foreignBookId;
+                var identifier = foreignBookId.StartsWith("ia:", StringComparison.Ordinal) ? foreignBookId[3..] : foreignBookId;
 
                 var metadata = GetMetadata(identifier);
                 var book = MapMetadataToBook(metadata, identifier);
