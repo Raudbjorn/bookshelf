@@ -202,6 +202,62 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
             return isbn.Replace("-", "").Replace(" ", "").Replace(".", "").Trim();
         }
 
+        private bool IsValidIsbn13(string isbn)
+        {
+            if (string.IsNullOrEmpty(isbn) || isbn.Length != 13)
+            {
+                return false;
+            }
+
+            // Ensure all characters are digits
+            if (!isbn.All(char.IsDigit))
+            {
+                return false;
+            }
+
+            // Validate ISBN-13 checksum
+            // Algorithm: Multiply each digit alternately by 1 and 3, sum them, check if divisible by 10
+            var sum = 0;
+            for (var i = 0; i < 12; i++)
+            {
+                var digit = isbn[i] - '0';
+                sum += (i % 2 == 0) ? digit : digit * 3;
+            }
+
+            var checkDigit = isbn[12] - '0';
+            var calculatedCheck = (10 - (sum % 10)) % 10;
+
+            return checkDigit == calculatedCheck;
+        }
+
+        private string ExtractValidIsbn13(List<string> isbns)
+        {
+            if (isbns == null || !isbns.Any())
+            {
+                return null;
+            }
+
+            // Try to find a valid ISBN-13 by normalizing and validating each ISBN
+            foreach (var isbn in isbns)
+            {
+                if (string.IsNullOrWhiteSpace(isbn))
+                {
+                    continue;
+                }
+
+                // Normalize by removing non-digit characters
+                var normalized = new string(isbn.Where(char.IsDigit).ToArray());
+
+                // Check if it's a valid ISBN-13
+                if (IsValidIsbn13(normalized))
+                {
+                    return normalized;
+                }
+            }
+
+            return null;
+        }
+
         private string BuildIsbnQuery(string isbn)
         {
             var queryParts = new List<string>
@@ -386,7 +442,7 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 ReleaseDate = ParseDate(GetStringValue(metadata.Date)),
                 Overview = GetStringValue(metadata.Description)?.CleanSpaces(),
                 Language = GetListValue(metadata.Language).FirstOrDefault() ?? "eng",
-                Isbn13 = isbns.FirstOrDefault(isbn => isbn?.Length == 13),
+                Isbn13 = ExtractValidIsbn13(isbns),
                 Monitored = true,
                 Links = new List<Links>
                 {
