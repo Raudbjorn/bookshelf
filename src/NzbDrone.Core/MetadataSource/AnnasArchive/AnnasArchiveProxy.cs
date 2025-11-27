@@ -13,10 +13,16 @@ using NzbDrone.Core.MetadataSource.AnnasArchive.Resources;
 namespace NzbDrone.Core.MetadataSource.AnnasArchive
 {
     /// <summary>
-    /// Anna's Archive metadata provider
-    /// Aggregates metadata from 165M+ files across 11+ sources
-    /// Uses official JSON API for individual records
+    /// Anna's Archive metadata provider.
+    /// Aggregates metadata from 165M+ files across 11+ sources including Libgen, Z-Library, ISBNdb, OpenLibrary, and Internet Archive.
+    /// Uses official JSON API for individual record lookups by MD5 hash.
     /// </summary>
+    /// <remarks>
+    /// Phase 1 implementation provides metadata retrieval by MD5 hash only.
+    /// Search functionality (by title, author, ISBN) is deferred to Phase 2.
+    /// Foreign ID format: aa:{md5hash}
+    /// Author ID format: aa-author:{slug}
+    /// </remarks>
     public class AnnasArchiveProxy : ISearchForNewBook, IProvideBookInfo
     {
         private const string JsonApiUrl = "https://annas-archive.org/db/aarecord_elasticsearch/md5:{0}.json.html";
@@ -38,6 +44,17 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
             _logger = logger;
         }
 
+        /// <summary>
+        /// Search for books by title and author.
+        /// </summary>
+        /// <param name="title">Book title to search for</param>
+        /// <param name="author">Optional author name</param>
+        /// <param name="getAllEditions">Whether to retrieve all editions (ignored for Anna's Archive)</param>
+        /// <returns>Empty list - search functionality not yet implemented (Phase 2)</returns>
+        /// <remarks>
+        /// Phase 2 feature: Requires HTML parsing to extract MD5 hashes from search results.
+        /// Current implementation returns empty list gracefully.
+        /// </remarks>
         public List<Book> SearchForNewBook(string title, string author = null, bool getAllEditions = true)
         {
             _logger.Debug("Searching Anna's Archive for: title={0}, author={1}", title, author);
@@ -56,6 +73,15 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
             }
         }
 
+        /// <summary>
+        /// Search for books by ISBN.
+        /// </summary>
+        /// <param name="isbn">ISBN-10 or ISBN-13 to search for</param>
+        /// <returns>Empty list - ISBN search not yet implemented (Phase 2)</returns>
+        /// <remarks>
+        /// Phase 2 feature: Requires ISBN to MD5 hash mapping.
+        /// Current implementation returns empty list gracefully.
+        /// </remarks>
         public List<Book> SearchByIsbn(string isbn)
         {
             _logger.Debug("Searching Anna's Archive by ISBN: {0}", isbn);
@@ -74,6 +100,15 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
             }
         }
 
+        /// <summary>
+        /// Search for books by Amazon ASIN.
+        /// </summary>
+        /// <param name="asin">Amazon Standard Identification Number</param>
+        /// <returns>Empty list - ASIN search not supported by Anna's Archive</returns>
+        /// <remarks>
+        /// Anna's Archive does not track Amazon ASINs.
+        /// This method returns empty list gracefully.
+        /// </remarks>
         public List<Book> SearchByAsin(string asin)
         {
             _logger.Debug("Searching Anna's Archive by ASIN: {0}", asin);
@@ -92,12 +127,34 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
             }
         }
 
+        /// <summary>
+        /// Search for books by Goodreads book ID.
+        /// </summary>
+        /// <param name="goodreadsId">Goodreads book identifier</param>
+        /// <param name="getAllEditions">Whether to retrieve all editions</param>
+        /// <returns>Empty list - Goodreads ID mapping not supported</returns>
+        /// <remarks>
+        /// Anna's Archive does not track Goodreads IDs.
+        /// This method returns empty list gracefully.
+        /// </remarks>
         public List<Book> SearchByGoodreadsBookId(int goodreadsId, bool getAllEditions)
         {
             // Anna's Archive doesn't have direct Goodreads ID mapping
             return new List<Book>();
         }
 
+        /// <summary>
+        /// Retrieve book information by Anna's Archive foreign ID.
+        /// </summary>
+        /// <param name="foreignBookId">Foreign book ID in format "aa:{md5hash}"</param>
+        /// <returns>Tuple containing: author foreign ID, Book object, and list of AuthorMetadata</returns>
+        /// <exception cref="AnnasArchiveException">Thrown when foreign ID format is invalid</exception>
+        /// <exception cref="BookNotFoundException">Thrown when book with specified MD5 is not found</exception>
+        /// <remarks>
+        /// Fetches metadata from Anna's Archive JSON API and aggregates data from multiple sources.
+        /// Priority order: ISBNdb → Libgen → Z-Library → file_unified_data
+        /// Results are cached for 24 hours.
+        /// </remarks>
         public Tuple<string, Book, List<AuthorMetadata>> GetBookInfo(string foreignBookId)
         {
             _logger.Debug("Getting book info from Anna's Archive for foreign ID: {0}", foreignBookId);
@@ -161,8 +218,17 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
         }
 
         /// <summary>
-        /// Get book metadata by MD5 hash using Anna's Archive JSON API
+        /// Get book metadata by MD5 hash using Anna's Archive JSON API.
         /// </summary>
+        /// <param name="md5">32-character hexadecimal MD5 hash</param>
+        /// <returns>Book object with aggregated metadata and single edition</returns>
+        /// <exception cref="AnnasArchiveException">Thrown when MD5 format is invalid or API error occurs</exception>
+        /// <exception cref="BookNotFoundException">Thrown when book with specified MD5 is not found</exception>
+        /// <remarks>
+        /// Endpoint: https://annas-archive.org/db/aarecord_elasticsearch/md5:{hash}.json.html
+        /// Response is cached for 24 hours.
+        /// Aggregates metadata from ISBNdb, Libgen, Z-Library, OpenLibrary, and other sources.
+        /// </remarks>
         public Book GetBookByMd5(string md5)
         {
             if (string.IsNullOrWhiteSpace(md5) || md5.Length != 32)
