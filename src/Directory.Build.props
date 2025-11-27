@@ -35,9 +35,20 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!--
         CS1591: Missing XML comment for publicly visible type or member 'Type_or_Member'
+        NU1510: PackageReference ... will not be pruned
+        CA2022: Avoid inexact read with Stream.Read
+        SYSLIB0057: X509Certificate2.X509Certificate2 is obsolete
+        ASPDEPR005: ForwardedHeadersOptions.KnownNetworks is obsolete
     -->
-    <NoWarn>$(NoWarn);CS1591;</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;NU1510;CA2022;SYSLIB0057;ASPDEPR005</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Force update transitive dependencies to fix vulnerabilities -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="System.Drawing.Common" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+  </ItemGroup>
 
   <PropertyGroup>
     <Configuration Condition="'$(Configuration)'==''">Release</Configuration>
