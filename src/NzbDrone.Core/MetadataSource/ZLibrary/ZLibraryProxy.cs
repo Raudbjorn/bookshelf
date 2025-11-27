@@ -6,6 +6,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MetadataSource.ZLibrary.Resources;
 
@@ -80,9 +81,48 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
                  throw new ZLibraryException($"Invalid Z-Library ID: {foreignBookId}");
             }
 
-            // Since we can't easily fetch by ID without search/scraping, we'll throw for now or implement later
-            // For a robust implementation we would need to replicate lazy librarian's full search or use the ID in a search query "id:..." if supported
-            throw new NotImplementedException("GetBookInfo by ID not fully supported by ZLib API without scraping.");
+            var id = parts[1];
+            var hash = parts[2];
+
+            try
+            {
+                EnsureAuthenticated();
+                var book = GetBookDetails(id, hash);
+
+                if (book == null)
+                {
+                    throw new BookNotFoundException(foreignBookId);
+                }
+
+                var mappedBook = MapToBook(book);
+                var authors = new List<AuthorMetadata>();
+                if (!string.IsNullOrWhiteSpace(book.Author))
+                {
+                    authors.Add(new AuthorMetadata { Name = book.Author, ForeignAuthorId = book.Author });
+                }
+
+                return new Tuple<string, Book, List<AuthorMetadata>>(book.Id, mappedBook, authors);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error getting book info from Z-Library for: {0}", foreignBookId);
+                throw;
+            }
+        }
+
+        private ZLibBook GetBookDetails(string id, string hash)
+        {
+            var builder = BuildRequestBuilder($"/book/{id}/{hash}");
+            var request = builder.Build();
+            var response = _httpClient.Get<ZLibBookDetailResponse>(request);
+
+            if (!response.Resource.Success || response.Resource.Book == null)
+            {
+                _logger.Warn("Z-Library get book details failed: success=false or book is null");
+                return null;
+            }
+
+            return response.Resource.Book;
         }
 
         private List<ZLibBook> Search(string query)
