@@ -444,12 +444,6 @@ namespace NzbDrone.Core.MetadataSource.InternetArchive
                 Language = GetListValue(metadata.Language).FirstOrDefault() ?? "eng",
                 Isbn13 = ExtractValidIsbn13(isbns),
                 Monitored = true,
-            // Replace spaces with hyphens, then remove .,',", and , in one regex pass
-            var slug = normalized.ToLowerInvariant().Replace(" ", "-");
-            slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[.,'\""]", "");
-            return slug;
-                    }
-                },
                 Images = new List<MediaCover.MediaCover>()
             };
 
