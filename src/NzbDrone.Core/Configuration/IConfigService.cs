@@ -82,6 +82,11 @@ namespace NzbDrone.Core.Configuration
         string GoogleBooksApiKey { get; set; }
         bool ComicVineEnabled { get; set; }
         string ComicVineApiKey { get; set; }
+        bool ZLibraryEnabled { get; set; }
+        string ZLibraryEmail { get; set; }
+        string ZLibraryPassword { get; set; }
+        string ZLibraryRemixUserId { get; set; }
+        string ZLibraryRemixUserKey { get; set; }
 
         //Metadata Provider Caching
         int GoogleBooksCacheTtlHours { get; set; }

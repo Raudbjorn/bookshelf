@@ -378,6 +378,41 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("ComicVineApiKey", value); }
         }
 
+        public bool ZLibraryEnabled
+        {
+            get { return GetValueBoolean("ZLibraryEnabled", false); }
+
+            set { SetValue("ZLibraryEnabled", value); }
+        }
+
+        public string ZLibraryEmail
+        {
+            get { return GetValue("ZLibraryEmail", string.Empty); }
+
+            set { SetValue("ZLibraryEmail", value); }
+        }
+
+        public string ZLibraryPassword
+        {
+            get { return GetValue("ZLibraryPassword", string.Empty); }
+
+            set { SetValue("ZLibraryPassword", value); }
+        }
+
+        public string ZLibraryRemixUserId
+        {
+            get { return GetValue("ZLibraryRemixUserId", string.Empty); }
+
+            set { SetValue("ZLibraryRemixUserId", value); }
+        }
+
+        public string ZLibraryRemixUserKey
+        {
+            get { return GetValue("ZLibraryRemixUserKey", string.Empty); }
+
+            set { SetValue("ZLibraryRemixUserKey", value); }
+        }
+
         public int GoogleBooksCacheTtlHours
         {
             get { return GetValueInt("GoogleBooksCacheTtlHours", 1); }
