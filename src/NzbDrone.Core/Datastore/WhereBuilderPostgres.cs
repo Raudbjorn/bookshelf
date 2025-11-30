@@ -75,6 +75,11 @@ namespace NzbDrone.Core.Datastore
                     ParseEndsWith(expression);
                     break;
 
+                case "op_Implicit":
+                case "op_Explicit":
+                    Visit(expression.Arguments[0]);
+                    break;
+
                 default:
                     var msg = string.Format("'{0}' expressions are not yet implemented in the where clause expression tree parser.", method);
                     throw new NotImplementedException(msg);
@@ -153,6 +158,11 @@ namespace NzbDrone.Core.Datastore
 
             if (expression.Expression is MemberExpression nested)
             {
+                if (nested.Expression == null)
+                {
+                    return false;
+                }
+
                 // Value is passed in as a property on a parent entity
                 var container = (nested.Expression as ConstantExpression)?.Value;
 
@@ -162,6 +172,11 @@ namespace NzbDrone.Core.Datastore
                 }
 
                 var entity = GetFieldValue(container, nested.Member);
+                if (entity == null)
+                {
+                    return false;
+                }
+
                 result = GetFieldValue(entity, expression.Member);
                 return true;
             }
@@ -194,14 +209,17 @@ namespace NzbDrone.Core.Datastore
 
             var memberExp = expression as MemberExpression;
 
-            if (TryGetPropertyValue(memberExp, out value))
+            if (memberExp != null)
             {
-                return true;
-            }
+                if (TryGetPropertyValue(memberExp, out value))
+                {
+                    return true;
+                }
 
-            if (TryGetVariableValue(memberExp, out value))
-            {
-                return true;
+                if (TryGetVariableValue(memberExp, out value))
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -297,10 +315,10 @@ namespace NzbDrone.Core.Datastore
             else
             {
                 // Static method
-                // Must be Enumerable.Contains(source, item)
-                if (body.Method.DeclaringType != typeof(Enumerable) || body.Arguments.Count != 2)
+                // Must be Enumerable.Contains(source, item) or Enumerable.Contains(source, item, comparer)
+                if (body.Arguments.Count != 2 && body.Arguments.Count != 3)
                 {
-                    throw new NotSupportedException("Unexpected form of Enumerable.Contains");
+                    throw new NotSupportedException($"Unexpected form of Enumerable.Contains. Args: {body.Arguments.Count}");
                 }
 
                 list = body.Arguments[0];

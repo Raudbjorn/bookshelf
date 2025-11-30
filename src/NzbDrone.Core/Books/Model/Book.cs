@@ -80,6 +80,7 @@ namespace NzbDrone.Core.Books
             HardcoverBookId = other.HardcoverBookId;
             OpenLibraryWorkId = other.OpenLibraryWorkId;
             GoogleBooksId = other.GoogleBooksId;
+            ComicVineIssueId = other.ComicVineIssueId;
             ForeignEditionId = other.ForeignEditionId;
             TitleSlug = other.TitleSlug;
             Title = other.Title;
@@ -109,6 +110,7 @@ namespace NzbDrone.Core.Books
             HardcoverBookId = other.HardcoverBookId;
             OpenLibraryWorkId = other.OpenLibraryWorkId;
             GoogleBooksId = other.GoogleBooksId;
+            ComicVineIssueId = other.ComicVineIssueId;
             ForeignEditionId = other.ForeignEditionId;
             AddOptions = other.AddOptions;
             Monitored = other.Monitored;
