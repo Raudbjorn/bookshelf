@@ -86,8 +86,7 @@ class AddNewAuthorSearchResult extends Component {
       isSmallScreen,
       provider,
       matchedProviders,
-      confidenceScore,
-      primarySource
+      confidenceScore
     } = this.props;
 
     const {
@@ -248,8 +247,7 @@ AddNewAuthorSearchResult.propTypes = {
   // Multi-provider metadata
   provider: PropTypes.string,
   matchedProviders: PropTypes.arrayOf(PropTypes.string),
-  confidenceScore: PropTypes.number,
-  primarySource: PropTypes.string
+  confidenceScore: PropTypes.number
 };
 
 export default AddNewAuthorSearchResult;

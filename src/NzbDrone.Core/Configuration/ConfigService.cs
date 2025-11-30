@@ -378,6 +378,62 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("ComicVineApiKey", value); }
         }
 
+        public bool ZLibraryEnabled
+        {
+            get { return GetValueBoolean("ZLibraryEnabled", false); }
+
+            set { SetValue("ZLibraryEnabled", value); }
+        }
+
+        public string ZLibraryEmail
+        {
+            get { return GetValue("ZLibraryEmail", string.Empty); }
+
+            set { SetValue("ZLibraryEmail", value); }
+        }
+
+        public string ZLibraryPassword
+        {
+            get { return GetValue("ZLibraryPassword", string.Empty); }
+
+            set { SetValue("ZLibraryPassword", value); }
+        }
+
+        public string ZLibraryRemixUserId
+        {
+            get { return GetValue("ZLibraryRemixUserId", string.Empty); }
+
+            set { SetValue("ZLibraryRemixUserId", value); }
+        }
+
+        public string ZLibraryRemixUserKey
+        {
+            get { return GetValue("ZLibraryRemixUserKey", string.Empty); }
+
+            set { SetValue("ZLibraryRemixUserKey", value); }
+        }
+
+        public string ZLibraryBaseUrl
+        {
+            get { return GetValue("ZLibraryBaseUrl", "https://1lib.sk"); }
+
+            set { SetValue("ZLibraryBaseUrl", value); }
+        }
+
+        public string ZLibrarySearchLanguage
+        {
+            get { return GetValue("ZLibrarySearchLanguage", "english"); }
+
+            set { SetValue("ZLibrarySearchLanguage", value); }
+        }
+
+        public string ZLibrarySiteLanguage
+        {
+            get { return GetValue("ZLibrarySiteLanguage", "en"); }
+
+            set { SetValue("ZLibrarySiteLanguage", value); }
+        }
+
         public int GoogleBooksCacheTtlHours
         {
             get { return GetValueInt("GoogleBooksCacheTtlHours", 1); }
