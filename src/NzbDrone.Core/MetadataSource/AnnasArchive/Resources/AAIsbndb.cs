@@ -19,7 +19,7 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive.Resources
         public string Title { get; set; }
 
         [JsonPropertyName("authors")]
-        public List<string> Authors { get; set; }
+        public List<string> Authors { get; set; } = new List<string>();
 
         [JsonPropertyName("publisher")]
         public string Publisher { get; set; }
