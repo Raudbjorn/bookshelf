@@ -21,7 +21,6 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
         private const int RATE_LIMIT_MS = 1000;
 
         private static readonly object _rateLimitLock = new object();
-        private static readonly Random _random = new Random();
         private static DateTime _lastRequestTime = DateTime.MinValue;
 
         private readonly IHttpClient _httpClient;
@@ -144,7 +143,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 
                         if (attempt == 1)
                         {
-                            Thread.Sleep(TimeSpan.FromMilliseconds(2000 + _random.Next(1000)));
+                            Thread.Sleep(TimeSpan.FromMilliseconds(2000 + Random.Shared.Next(1000)));
                             continue;
                         }
                     }
@@ -156,7 +155,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 
                         if (attempt == 1)
                         {
-                            Thread.Sleep(TimeSpan.FromMilliseconds(1000 + _random.Next(500)));
+                            Thread.Sleep(TimeSpan.FromMilliseconds(1000 + Random.Shared.Next(500)));
                             continue;
                         }
                     }
@@ -170,7 +169,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 
                     if (attempt == 1 && IsRetryableException(ex))
                     {
-                        Thread.Sleep(TimeSpan.FromMilliseconds(1000 + _random.Next(500)));
+                        Thread.Sleep(TimeSpan.FromMilliseconds(1000 + Random.Shared.Next(500)));
                     }
                 }
             }
