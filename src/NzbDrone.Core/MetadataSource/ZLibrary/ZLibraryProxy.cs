@@ -14,8 +14,8 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 {
     public class ZLibraryProxy : ISearchForNewBook, IProvideBookInfo
     {
-        private const string BaseUrl = "https://1lib.sk";
-        private const string ApiUrl = BaseUrl + "/eapi";
+        // BaseUrl is now configurable via IConfigService.ZLibraryBaseUrl
+        private string ApiUrl => _configService.ZLibraryBaseUrl.TrimEnd('/') + "/eapi";
 
         private readonly IHttpClient _httpClient;
         private readonly IConfigService _configService;
@@ -78,7 +78,7 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
             var parts = foreignBookId.Split(':');
             if (parts.Length < 3)
             {
-                 throw new ZLibraryException($"Invalid Z-Library ID: {foreignBookId}");
+                throw new ZLibraryException($"Invalid Z-Library ID: {foreignBookId}");
             }
 
             var id = parts[1];
@@ -131,7 +131,7 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
                 .Post()
                 .AddFormParameter("message", query)
                 .AddFormParameter("limit", "50")
-                .AddFormParameter("languages[0]", "english"); // Make configurable
+                .AddFormParameter("languages[0]", _configService.ZLibraryLanguage ?? "english"); // Language is now configurable
 
             var request = builder.Build();
             var response = _httpClient.Post<ZLibSearchResponse>(request);
@@ -245,7 +245,7 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 
             if (!string.IsNullOrEmpty(zBook.Cover))
             {
-                 edition.Images.Add(new MediaCover.MediaCover { Url = zBook.Cover, CoverType = MediaCoverTypes.Cover });
+                edition.Images.Add(new MediaCover.MediaCover { Url = zBook.Cover, CoverType = MediaCoverTypes.Cover });
             }
 
             book.Editions = new List<Edition> { edition };
@@ -254,12 +254,12 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 
         private DateTime? ParseYear(string year)
         {
-             if (int.TryParse(year, out var y) && y > 0 && y < 3000)
-             {
-                 return new DateTime(y, 1, 1);
-             }
+            if (int.TryParse(year, out var y) && y > 0 && y < 3000)
+            {
+                return new DateTime(y, 1, 1);
+            }
 
-             return null;
+            return null;
         }
     }
 }
