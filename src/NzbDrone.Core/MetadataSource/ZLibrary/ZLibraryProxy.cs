@@ -60,7 +60,7 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 
         public List<Book> SearchByAsin(string asin)
         {
-             return SearchForNewBook(asin);
+            return SearchForNewBook(asin);
         }
 
         public List<Book> SearchByGoodreadsBookId(int goodreadsId, bool getAllEditions)
