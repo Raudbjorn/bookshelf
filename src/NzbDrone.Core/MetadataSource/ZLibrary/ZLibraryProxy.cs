@@ -166,7 +166,7 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
             }
             else
             {
-                _logger.Warn("Z-Library credentials not found. Please configure Email/Password or Remix Tokens.");
+                throw new ZLibraryException("Z-Library credentials not configured: provide Email/Password or Remix tokens.");
             }
         }
 
