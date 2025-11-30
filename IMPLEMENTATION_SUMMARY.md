@@ -5,7 +5,7 @@
 ### What Was Built
 
 A complete multi-provider metadata search system for Bookshelf/Readarr that:
-- Searches across **Hardcover**, **Open Library**, and **Google Books** simultaneously
+- Searches across **Hardcover**, **Open Library**, **Google Books**, and **ComicVine** simultaneously
 - **Reconciles** results from multiple providers with intelligent matching
 - Displays **confidence scores** (70-100%) for reconciled matches
 - Shows **color-coded provider badges** on search results
@@ -23,6 +23,7 @@ A complete multi-provider metadata search system for Bookshelf/Readarr that:
 - Hardcover GraphQL API integration
 - Open Library REST API integration
 - Google Books REST API integration
+- ComicVine API integration
 - New API endpoints for provider-specific searches
 
 ✅ **Frontend UI** (Phase 3)
@@ -53,6 +54,7 @@ GET /api/v1/search/provider/reconcile?term={term}&providers={csv}
 GET /api/v1/search/provider/hardcover?term={term}
 GET /api/v1/search/provider/openlibrary?term={term}
 GET /api/v1/search/provider/googlebooks?term={term}
+GET /api/v1/search/provider/comicvine?term={term}
 GET /api/v1/search/provider?term={term}&providers={csv}
 ```
 
