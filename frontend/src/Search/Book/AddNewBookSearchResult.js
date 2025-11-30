@@ -88,8 +88,7 @@ class AddNewBookSearchResult extends Component {
       isSmallScreen,
       provider,
       matchedProviders,
-      confidenceScore,
-      primarySource
+      confidenceScore
     } = this.props;
 
     const {

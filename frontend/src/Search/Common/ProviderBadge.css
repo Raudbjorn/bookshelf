@@ -1,15 +1,16 @@
 .badge {
+  display: inline-block;
   margin-right: 5px;
   margin-bottom: 5px;
-  display: inline-block;
-  font-size: 11px;
   padding: 3px 8px;
+  font-size: 11px;
 }
 
 .reconciledBadges {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+
   margin-top: 5px;
 }
 
