@@ -168,34 +168,8 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
                     throw new AnnasArchiveException("Invalid foreign book ID format. Expected: aa:md5hash");
                 }
 
-                // Fetch the record once
-                var url = string.Format(JsonApiUrl, md5.ToLower());
-                var httpRequest = new HttpRequestBuilder(url)
-                    .SetHeader("User-Agent", UserAgent)
-                    .Build();
-
-                httpRequest.AllowAutoRedirect = true;
-                httpRequest.SuppressHttpError = true;
-
-                var response = _cachedHttpClient.Get(httpRequest, true, TimeSpan.FromHours(24));
-
-                if (response.HasHttpError)
-                {
-                    if (response.StatusCode == HttpStatusCode.NotFound)
-                    {
-                        throw new BookNotFoundException($"Book with MD5 {md5} not found in Anna's Archive");
-                    }
-
-                    throw new AnnasArchiveException($"API error: HTTP {response.StatusCode}");
-                }
-
-                var record = JsonSerializer.Deserialize<AARecord>(response.Content);
-                if (record == null)
-                {
-                    throw new AnnasArchiveException("Failed to deserialize Anna's Archive response");
-                }
-
-                // Map to models
+                // Fetch record and map to models
+                var record = FetchRecordByMd5(md5);
                 var book = MapRecordToBook(record);
                 var authors = GetAuthorMetadata(record);
                 var authorId = authors.FirstOrDefault()?.ForeignAuthorId ?? "unknown";
@@ -231,42 +205,9 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
         /// </remarks>
         public Book GetBookByMd5(string md5)
         {
-            if (string.IsNullOrWhiteSpace(md5) || md5.Length != 32)
-            {
-                throw new AnnasArchiveException("Invalid MD5 hash. Must be 32 characters");
-            }
-
-            _logger.Debug("Fetching metadata for MD5: {0}", md5);
-
             try
             {
-                var url = string.Format(JsonApiUrl, md5.ToLower());
-                var httpRequest = new HttpRequestBuilder(url)
-                    .SetHeader("User-Agent", UserAgent)
-                    .Build();
-
-                httpRequest.AllowAutoRedirect = true;
-                httpRequest.SuppressHttpError = true;
-
-                // Cache for 24 hours (metadata rarely changes)
-                var response = _cachedHttpClient.Get(httpRequest, true, TimeSpan.FromHours(24));
-
-                if (response.HasHttpError)
-                {
-                    if (response.StatusCode == HttpStatusCode.NotFound)
-                    {
-                        throw new BookNotFoundException($"Book with MD5 {md5} not found in Anna's Archive");
-                    }
-
-                    throw new AnnasArchiveException($"API error: HTTP {response.StatusCode}");
-                }
-
-                var record = JsonSerializer.Deserialize<AARecord>(response.Content);
-                if (record == null)
-                {
-                    throw new AnnasArchiveException("Failed to deserialize Anna's Archive response");
-                }
-
+                var record = FetchRecordByMd5(md5);
                 return MapRecordToBook(record);
             }
             catch (BookNotFoundException)
@@ -282,6 +223,51 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
                 _logger.Error(ex, "Error fetching metadata for MD5: {0}", md5);
                 throw new AnnasArchiveException($"Failed to fetch metadata for MD5 {md5}", ex);
             }
+        }
+
+        /// <summary>
+        /// Fetch Anna's Archive record by MD5 hash.
+        /// </summary>
+        /// <param name="md5">32-character hexadecimal MD5 hash</param>
+        /// <returns>Deserialized AARecord object</returns>
+        /// <exception cref="AnnasArchiveException">Thrown when MD5 format is invalid or API error occurs</exception>
+        /// <exception cref="BookNotFoundException">Thrown when book with specified MD5 is not found</exception>
+        private AARecord FetchRecordByMd5(string md5)
+        {
+            if (string.IsNullOrWhiteSpace(md5) || md5.Length != 32)
+            {
+                throw new AnnasArchiveException("Invalid MD5 hash. Must be 32 characters");
+            }
+
+            _logger.Debug("Fetching metadata for MD5: {0}", md5);
+
+            var url = string.Format(JsonApiUrl, md5.ToLower());
+            var httpRequest = new HttpRequestBuilder(url)
+                .SetHeader("User-Agent", UserAgent)
+                .Build();
+
+            httpRequest.AllowAutoRedirect = true;
+            httpRequest.SuppressHttpError = true;
+
+            var response = _cachedHttpClient.Get(httpRequest, true, TimeSpan.FromHours(24));
+
+            if (response.HasHttpError)
+            {
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new BookNotFoundException($"Book with MD5 {md5} not found in Anna's Archive");
+                }
+
+                throw new AnnasArchiveException($"API error: HTTP {response.StatusCode}");
+            }
+
+            var record = JsonSerializer.Deserialize<AARecord>(response.Content);
+            if (record == null)
+            {
+                throw new AnnasArchiveException("Failed to deserialize Anna's Archive response");
+            }
+
+            return record;
         }
 
         private Book MapRecordToBook(AARecord record)
@@ -411,28 +397,21 @@ namespace NzbDrone.Core.MetadataSource.AnnasArchive
 
         private List<string> GetAuthorNames(AARecord record)
         {
-            var authors = new List<string>();
+            List<string> authors;
 
             // Priority: ISBNdb (structured) > Libgen > Z-Library > file_unified_data
             if (record.IsbnDb?.Authors != null && record.IsbnDb.Authors.Any())
             {
-                authors.AddRange(record.IsbnDb.Authors);
+                authors = record.IsbnDb.Authors;
             }
-            else if (!string.IsNullOrEmpty(record.LibgenNonFiction?.Author))
+            else
             {
-                authors.AddRange(SplitAuthors(record.LibgenNonFiction.Author));
-            }
-            else if (!string.IsNullOrEmpty(record.LibgenFiction?.Author))
-            {
-                authors.AddRange(SplitAuthors(record.LibgenFiction.Author));
-            }
-            else if (!string.IsNullOrEmpty(record.ZLibrary?.Author))
-            {
-                authors.AddRange(SplitAuthors(record.ZLibrary.Author));
-            }
-            else if (!string.IsNullOrEmpty(record.FileUnifiedData.Author))
-            {
-                authors.AddRange(SplitAuthors(record.FileUnifiedData.Author));
+                var authorString = record.LibgenNonFiction?.Author
+                    ?? record.LibgenFiction?.Author
+                    ?? record.ZLibrary?.Author
+                    ?? record.FileUnifiedData.Author;
+
+                authors = SplitAuthors(authorString);
             }
 
             return authors.Where(a => !string.IsNullOrWhiteSpace(a)).Distinct().ToList();

@@ -74,7 +74,7 @@ This changes the implementation from "web scraping (hard)" to "API integration (
 
 ```
 # Individual Record
-GET http://annas-archive.org/db/aarecord_elasticsearch/md5:{hash}.json.html
+GET https://annas-archive.org/db/aarecord_elasticsearch/md5:{hash}.json.html
 
 # Returns: Complete book metadata in JSON format
 {
