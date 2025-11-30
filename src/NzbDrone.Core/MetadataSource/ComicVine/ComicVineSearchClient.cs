@@ -21,7 +21,6 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
         private const int RATE_LIMIT_MS = 1000;
 
         private static readonly object _rateLimitLock = new object();
-        private static readonly Random _random = new Random();
         private static DateTime _lastRequestTime = DateTime.MinValue;
 
         private readonly IHttpClient _httpClient;
@@ -37,11 +36,11 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
             _logger = LogManager.GetCurrentClassLogger();
         }
 
-        public List<object> Search(string searchTerm)
+        public List<ComicVineIssueResult> Search(string searchTerm)
         {
             if (string.IsNullOrWhiteSpace(searchTerm))
             {
-                return new List<object>();
+                return new List<ComicVineIssueResult>();
             }
 
             if (!_configService.ComicVineEnabled || string.IsNullOrEmpty(_configService.ComicVineApiKey))
@@ -66,7 +65,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
                 }
 
                 _logger.Warn($"ComicVine search returned no results for '{trimmed}'");
-                return new List<object>();
+                return new List<ComicVineIssueResult>();
             }
             catch (Exception ex)
             {
@@ -75,7 +74,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
             }
         }
 
-        private List<object> ExecuteSearch(string query)
+        private List<ComicVineIssueResult> ExecuteSearch(string query)
         {
             var encodedQuery = Uri.EscapeDataString(query);
             var request = new HttpRequestBuilder(COMICVINE_ENDPOINT)
@@ -144,7 +143,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 
                         if (attempt == 1)
                         {
-                            Thread.Sleep(TimeSpan.FromMilliseconds(2000 + _random.Next(1000)));
+                            Thread.Sleep(TimeSpan.FromMilliseconds(2000 + Random.Shared.Next(1000)));
                             continue;
                         }
                     }
@@ -156,7 +155,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 
                         if (attempt == 1)
                         {
-                            Thread.Sleep(TimeSpan.FromMilliseconds(1000 + _random.Next(500)));
+                            Thread.Sleep(TimeSpan.FromMilliseconds(1000 + Random.Shared.Next(500)));
                             continue;
                         }
                     }
@@ -170,7 +169,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 
                     if (attempt == 1 && IsRetryableException(ex))
                     {
-                        Thread.Sleep(TimeSpan.FromMilliseconds(1000 + _random.Next(500)));
+                        Thread.Sleep(TimeSpan.FromMilliseconds(1000 + Random.Shared.Next(500)));
                     }
                 }
             }
@@ -185,7 +184,7 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
                    ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
         }
 
-        private List<object> ParseSearchResponse(string responseContent)
+        private List<ComicVineIssueResult> ParseSearchResponse(string responseContent)
         {
             try
             {
@@ -213,10 +212,10 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
                 if (searchResult.Results == null || !searchResult.Results.Any())
                 {
                     _logger.Debug("ComicVine response contained no results");
-                    return new List<object>();
+                    return new List<ComicVineIssueResult>();
                 }
 
-                var results = new List<object>();
+                var results = new List<ComicVineIssueResult>();
 
                 foreach (var issue in searchResult.Results)
                 {

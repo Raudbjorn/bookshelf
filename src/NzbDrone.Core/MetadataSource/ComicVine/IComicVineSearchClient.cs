@@ -4,6 +4,6 @@ namespace NzbDrone.Core.MetadataSource.ComicVine
 {
     public interface IComicVineSearchClient
     {
-        List<object> Search(string searchTerm);
+        List<ComicVineIssueResult> Search(string searchTerm);
     }
 }

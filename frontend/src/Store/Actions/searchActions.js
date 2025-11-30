@@ -102,7 +102,7 @@ export const actionHandlers = handleThunks({
 
     // Determine the API endpoint based on search mode
     let url = '/search';
-    let requestData = { term: payload.term };
+    const requestData = { term: payload.term };
 
     if (searchMode === 'reconciled') {
       url = '/search/provider/reconcile';
@@ -129,7 +129,7 @@ export const actionHandlers = handleThunks({
         const bookItems = (data.books || [])
           .filter(item => item && item.book)
           .map((item, index) => {
-            const foreignId = item.book.foreignBookId || item.openLibraryId || item.googleBooksId || item.hardcoverId || `reconciled-book-${index}`;
+            const foreignId = item.book.foreignBookId || item.openLibraryId || item.googleBooksId || item.hardcoverId || item.comicVineId || `reconciled-book-${index}`;
             const book = item.book;
 
             // Ensure book has an author object for compatibility
@@ -147,12 +147,13 @@ export const actionHandlers = handleThunks({
 
             return {
               id: index + 1,
-              book: book,
-              foreignId: foreignId,
+              book,
+              foreignId,
               // Include provider IDs for display
               hardcoverId: item.hardcoverId,
               openLibraryId: item.openLibraryId,
               googleBooksId: item.googleBooksId,
+              comicVineId: item.comicVineId,
               matchedProviders: item.matchedProviders,
               confidenceScore: item.confidenceScore,
               primarySource: item.primarySource
@@ -163,15 +164,16 @@ export const actionHandlers = handleThunks({
         const authorItems = (data.authors || [])
           .filter(item => item && item.author)
           .map((item, index) => {
-            const foreignId = item.author.foreignAuthorId || item.openLibraryId || item.googleBooksId || item.hardcoverId || `reconciled-author-${index}`;
+            const foreignId = item.author.foreignAuthorId || item.openLibraryId || item.googleBooksId || item.hardcoverId || item.comicVineId || `reconciled-author-${index}`;
             return {
               id: bookItems.length + index + 1,
               author: item.author,
-              foreignId: foreignId,
+              foreignId,
               // Include provider IDs for display
               hardcoverId: item.hardcoverId,
               openLibraryId: item.openLibraryId,
               googleBooksId: item.googleBooksId,
+              comicVineId: item.comicVineId,
               matchedProviders: item.matchedProviders,
               confidenceScore: item.confidenceScore,
               primarySource: item.primarySource

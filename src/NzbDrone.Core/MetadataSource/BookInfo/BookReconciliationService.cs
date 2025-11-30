@@ -339,6 +339,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                             // Merge images
                             if (matchEdition.Images != null && matchEdition.Images.Any())
                             {
+                                if (primaryEdition.Images == null)
+                                {
+                                    primaryEdition.Images = new List<MediaCover.MediaCover>();
+                                }
+
                                 foreach (var image in matchEdition.Images)
                                 {
                                     if (!primaryEdition.Images.Any(i => i.Url == image.Url))
