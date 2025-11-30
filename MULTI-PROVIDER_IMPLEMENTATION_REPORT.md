@@ -86,10 +86,9 @@ public interface IProvideBookInfo
 - Author Details: Complete author profile
 
 **Namespace Collision Fix:**
-Applied to prevent conflicts with GoodReads classes:
+Applied to prevent conflicts with Goodreads classes:
 ```csharp
 namespace NzbDrone.Core.MetadataSource.Hardcover
-```
 
 ### 2.2 Open Library Integration
 

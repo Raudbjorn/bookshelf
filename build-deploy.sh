@@ -285,8 +285,9 @@ deploy_backend() {
     # Deploy backend files WITHOUT --delete to preserve UI directory
     # Using --exclude to skip UI and prevent accidental overwrite
     sudo rsync -av \
-        --exclude 'UI/' \
         --exclude 'UI' \
+        --delete \
+        --delete-excluded \
         "${BUILD_OUTPUT}/${BACKEND_RUNTIME}/" \
         "${DEPLOY_DIR}/"
 
