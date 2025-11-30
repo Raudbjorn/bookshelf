@@ -88,8 +88,7 @@ class AddNewBookSearchResult extends Component {
       isSmallScreen,
       provider,
       matchedProviders,
-      confidenceScore,
-      primarySource
+      confidenceScore
     } = this.props;
 
     const {
@@ -241,8 +240,7 @@ AddNewBookSearchResult.propTypes = {
   // Multi-provider metadata
   provider: PropTypes.string,
   matchedProviders: PropTypes.arrayOf(PropTypes.string),
-  confidenceScore: PropTypes.number,
-  primarySource: PropTypes.string
+  confidenceScore: PropTypes.number
 };
 
 export default AddNewBookSearchResult;

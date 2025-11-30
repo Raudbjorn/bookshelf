@@ -102,7 +102,7 @@ export const actionHandlers = handleThunks({
 
     // Determine the API endpoint based on search mode
     let url = '/search';
-    let requestData = { term: payload.term };
+    const requestData = { term: payload.term };
 
     if (searchMode === 'reconciled') {
       url = '/search/provider/reconcile';
@@ -147,8 +147,8 @@ export const actionHandlers = handleThunks({
 
             return {
               id: index + 1,
-              book: book,
-              foreignId: foreignId,
+              book,
+              foreignId,
               // Include provider IDs for display
               hardcoverId: item.hardcoverId,
               openLibraryId: item.openLibraryId,
@@ -167,7 +167,7 @@ export const actionHandlers = handleThunks({
             return {
               id: bookItems.length + index + 1,
               author: item.author,
-              foreignId: foreignId,
+              foreignId,
               // Include provider IDs for display
               hardcoverId: item.hardcoverId,
               openLibraryId: item.openLibraryId,
