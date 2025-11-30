@@ -129,7 +129,7 @@ export const actionHandlers = handleThunks({
         const bookItems = (data.books || [])
           .filter(item => item && item.book)
           .map((item, index) => {
-            const foreignId = item.book.foreignBookId || item.openLibraryId || item.googleBooksId || item.hardcoverId || `reconciled-book-${index}`;
+            const foreignId = item.book.foreignBookId || item.openLibraryId || item.googleBooksId || item.hardcoverId || item.comicVineId || `reconciled-book-${index}`;
             const book = item.book;
 
             // Ensure book has an author object for compatibility
@@ -153,6 +153,7 @@ export const actionHandlers = handleThunks({
               hardcoverId: item.hardcoverId,
               openLibraryId: item.openLibraryId,
               googleBooksId: item.googleBooksId,
+              comicVineId: item.comicVineId,
               matchedProviders: item.matchedProviders,
               confidenceScore: item.confidenceScore,
               primarySource: item.primarySource
@@ -163,7 +164,7 @@ export const actionHandlers = handleThunks({
         const authorItems = (data.authors || [])
           .filter(item => item && item.author)
           .map((item, index) => {
-            const foreignId = item.author.foreignAuthorId || item.openLibraryId || item.googleBooksId || item.hardcoverId || `reconciled-author-${index}`;
+            const foreignId = item.author.foreignAuthorId || item.openLibraryId || item.googleBooksId || item.hardcoverId || item.comicVineId || `reconciled-author-${index}`;
             return {
               id: bookItems.length + index + 1,
               author: item.author,
@@ -172,6 +173,7 @@ export const actionHandlers = handleThunks({
               hardcoverId: item.hardcoverId,
               openLibraryId: item.openLibraryId,
               googleBooksId: item.googleBooksId,
+              comicVineId: item.comicVineId,
               matchedProviders: item.matchedProviders,
               confidenceScore: item.confidenceScore,
               primarySource: item.primarySource

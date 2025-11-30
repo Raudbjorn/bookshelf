@@ -730,10 +730,7 @@ namespace Readarr.Api.V1.Search
                 else if (result is NzbDrone.Core.MetadataSource.ComicVine.ComicVineIssueResult comicVineIssue)
                 {
                     // Handle raw ComicVine issue results - map to books (comics)
-                    var volumeName = comicVineIssue.Volume?.Name ?? "Unknown Volume";
-                    var issueNumber = !string.IsNullOrWhiteSpace(comicVineIssue.IssueNumber) ? $" #{comicVineIssue.IssueNumber}" : "";
-                    var issueName = !string.IsNullOrWhiteSpace(comicVineIssue.Name) ? $": {comicVineIssue.Name}" : "";
-                    var title = $"{volumeName}{issueNumber}{issueName}";
+                    var title = GenerateComicVineTitle(comicVineIssue);
 
                     var bookResource = new Readarr.Api.V1.Books.BookResource
                     {
@@ -751,7 +748,7 @@ namespace Readarr.Api.V1.Search
 
                     // For comics, use the series/volume name as the "author" since individual writers change frequently
                     // and ComicVine search API doesn't return person_credits without fetching full issue details
-                    var authorName = volumeName;
+                    var authorName = comicVineIssue.Volume?.Name ?? "Unknown Volume";
 
                     bookResource.Author = new Readarr.Api.V1.Author.AuthorResource
                     {
@@ -996,16 +993,7 @@ namespace Readarr.Api.V1.Search
             }
 
             // Build title from volume name and issue number
-            var title = comicVineIssue.Volume?.Name ?? "Unknown";
-            if (!string.IsNullOrWhiteSpace(comicVineIssue.IssueNumber))
-            {
-                title += $" #{comicVineIssue.IssueNumber}";
-            }
-
-            if (!string.IsNullOrWhiteSpace(comicVineIssue.Name))
-            {
-                title += $" - {comicVineIssue.Name}";
-            }
+            var title = GenerateComicVineTitle(comicVineIssue);
 
             // Create edition with detailed metadata
             var edition = new Edition
@@ -1058,6 +1046,19 @@ namespace Readarr.Api.V1.Search
             }
 
             return book;
+        }
+
+        private string GenerateComicVineTitle(ComicVineIssueResult comicVineIssue)
+        {
+            if (comicVineIssue == null)
+            {
+                return "Unknown";
+            }
+
+            var volumeName = comicVineIssue.Volume?.Name ?? "Unknown Volume";
+            var issueNumber = !string.IsNullOrWhiteSpace(comicVineIssue.IssueNumber) ? $" #{comicVineIssue.IssueNumber}" : "";
+            var issueName = !string.IsNullOrWhiteSpace(comicVineIssue.Name) ? $" - {comicVineIssue.Name}" : "";
+            return $"{volumeName}{issueNumber}{issueName}";
         }
 
         private string GenerateTitleSlug(string title)

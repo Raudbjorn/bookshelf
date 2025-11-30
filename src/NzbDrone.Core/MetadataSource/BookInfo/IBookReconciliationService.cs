@@ -17,7 +17,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public string GoogleBooksId { get; set; }
         public string ComicVineId { get; set; }
         public string GoodreadsId { get; set; }
-        public List<string> MatchedProviders { get; set; }
+        public List<string> MatchedProviders { get; set; } = new List<string>();
         public decimal ConfidenceScore { get; set; }
         public string PrimarySource { get; set; }
     }
@@ -30,7 +30,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         public string GoogleBooksId { get; set; }
         public string ComicVineId { get; set; }
         public string GoodreadsId { get; set; }
-        public List<string> MatchedProviders { get; set; }
+        public List<string> MatchedProviders { get; set; } = new List<string>();
         public decimal ConfidenceScore { get; set; }
         public string PrimarySource { get; set; }
     }
