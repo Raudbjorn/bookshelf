@@ -29,6 +29,18 @@ namespace NzbDrone.Core.Test.MetadataSource.ZLibrary
             Mocker.GetMock<IConfigService>()
                 .Setup(s => s.ZLibraryRemixUserKey)
                 .Returns("abcdef");
+
+            Mocker.GetMock<IConfigService>()
+                .Setup(s => s.ZLibraryBaseUrl)
+                .Returns("https://1lib.sk");
+
+            Mocker.GetMock<IConfigService>()
+                .Setup(s => s.ZLibrarySearchLanguage)
+                .Returns("english");
+
+            Mocker.GetMock<IConfigService>()
+                .Setup(s => s.ZLibrarySiteLanguage)
+                .Returns("en");
         }
 
         [Test]

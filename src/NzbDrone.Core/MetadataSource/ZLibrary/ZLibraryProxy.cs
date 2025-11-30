@@ -14,8 +14,9 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 {
     public class ZLibraryProxy : ISearchForNewBook, IProvideBookInfo
     {
-        // BaseUrl is now configurable via IConfigService.ZLibraryBaseUrl
-        private string ApiUrl => _configService.ZLibraryBaseUrl.TrimEnd('/') + "/eapi";
+        private const int MaxValidYear = 3000;
+        private string BaseUrl => _configService.ZLibraryBaseUrl.TrimEnd('/');
+        private string ApiUrl => $"{BaseUrl}/eapi";
 
         private readonly IHttpClient _httpClient;
         private readonly IConfigService _configService;
@@ -127,11 +128,12 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 
         private List<ZLibBook> Search(string query)
         {
+            var language = _configService.ZLibrarySearchLanguage ?? "english";
             var builder = BuildRequestBuilder("/book/search")
                 .Post()
                 .AddFormParameter("message", query)
                 .AddFormParameter("limit", "50")
-                .AddFormParameter("languages[0]", _configService.ZLibraryLanguage ?? "english"); // Language is now configurable
+                .AddFormParameter("languages[0]", language);
 
             var request = builder.Build();
             var response = _httpClient.Post<ZLibSearchResponse>(request);
@@ -211,18 +213,22 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
                 builder.SetCookie("remix_userkey", userKey);
             }
 
-            builder.SetCookie("siteLanguageV2", "en");
+            var siteLang = _configService.ZLibrarySiteLanguage ?? "en";
+            builder.SetCookie("siteLanguageV2", siteLang);
 
             return builder;
         }
 
         private Book MapToBook(ZLibBook zBook)
         {
+            var title = zBook.Title?.CleanSpaces() ?? "Unknown Title";
+            var titleSlug = title.ToLower().Replace(" ", "-");
+
             var book = new Book
             {
                 ForeignBookId = $"zlib:{zBook.Id}:{zBook.Hash}",
-                Title = zBook.Title?.CleanSpaces() ?? "Unknown Title",
-                TitleSlug = zBook.Title?.CleanSpaces().ToLower().Replace(" ", "-"),
+                Title = title,
+                TitleSlug = titleSlug,
                 ReleaseDate = ParseYear(zBook.Year),
                 Links = new List<Links>
                 {
@@ -234,8 +240,8 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
             var edition = new Edition
             {
                 ForeignEditionId = $"zlib:{zBook.Id}:{zBook.Hash}",
-                Title = zBook.Title?.CleanSpaces() ?? "Unknown Title",
-                TitleSlug = book.TitleSlug,
+                Title = title,
+                TitleSlug = titleSlug,
                 ReleaseDate = book.ReleaseDate,
                 Language = zBook.Language,
                 Publisher = zBook.Publisher,
@@ -254,7 +260,7 @@ namespace NzbDrone.Core.MetadataSource.ZLibrary
 
         private DateTime? ParseYear(string year)
         {
-            if (int.TryParse(year, out var y) && y > 0 && y < 3000)
+            if (int.TryParse(year, out var y) && y > 0 && y < MaxValidYear)
             {
                 return new DateTime(y, 1, 1);
             }

@@ -87,6 +87,9 @@ namespace NzbDrone.Core.Configuration
         string ZLibraryPassword { get; set; }
         string ZLibraryRemixUserId { get; set; }
         string ZLibraryRemixUserKey { get; set; }
+        string ZLibraryBaseUrl { get; set; }
+        string ZLibrarySearchLanguage { get; set; }
+        string ZLibrarySiteLanguage { get; set; }
 
         //Metadata Provider Caching
         int GoogleBooksCacheTtlHours { get; set; }

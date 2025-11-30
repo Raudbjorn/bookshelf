@@ -413,6 +413,27 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("ZLibraryRemixUserKey", value); }
         }
 
+        public string ZLibraryBaseUrl
+        {
+            get { return GetValue("ZLibraryBaseUrl", "https://1lib.sk"); }
+
+            set { SetValue("ZLibraryBaseUrl", value); }
+        }
+
+        public string ZLibrarySearchLanguage
+        {
+            get { return GetValue("ZLibrarySearchLanguage", "english"); }
+
+            set { SetValue("ZLibrarySearchLanguage", value); }
+        }
+
+        public string ZLibrarySiteLanguage
+        {
+            get { return GetValue("ZLibrarySiteLanguage", "en"); }
+
+            set { SetValue("ZLibrarySiteLanguage", value); }
+        }
+
         public int GoogleBooksCacheTtlHours
         {
             get { return GetValueInt("GoogleBooksCacheTtlHours", 1); }
